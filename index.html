@@ -36,6 +36,10 @@
         <div>
             <h1 class="text-lg font-bold">SGI Vistoria</h1>
             <p class="text-xs text-gray-400">AL Industrial - Coleta Mobile</p>
+            <!-- NOVO: MENU DE HISTÓRICO DE VISTORIAS -->
+            <select id="select-historico" onchange="carregarHistorico(this.value)" class="mt-1 bg-gray-800 text-gray-200 text-xs py-1 px-2 rounded border border-gray-600 outline-none hidden max-w-[160px] truncate shadow-inner">
+                <option value="">Carregando histórico...</option>
+            </select>
         </div>
         <button onclick="abrirModalExportacao()" class="bg-alblue hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -196,12 +200,137 @@
         let dadosColetados = {};
 
         // -----------------------------------------
-        // 2. INICIALIZAÇÃO DA INTERFACE
+        // 2. INICIALIZAÇÃO DA INTERFACE E INTEGRAÇÃO GITHUB (FETCH)
         // -----------------------------------------
         window.onload = () => {
-            // Força a entrada na aba inicial corretamente
-            mudarFilial('DASHBOARD');
+            inicializarApp();
         };
+
+        async function inicializarApp() {
+            try {
+                // 1. Busca os arquivos na API pública do seu repositório no GitHub
+                const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
+                const responseCat = await fetch(repoApiUrl);
+                
+                if (!responseCat.ok) throw new Error('Falha ao acessar o repositório no GitHub');
+                const files = await responseCat.json();
+                
+                // 2. Filtra apenas JSON e extrai a data via Regex de forma inteligente
+                const jsonFiles = files
+                    .filter(f => f.name.endsWith('.json'))
+                    .map(f => {
+                        // Regex procura exatamente o padrão YYYY-MM-DD
+                        const match = f.name.match(/(\d{4}-\d{2}-\d{2})/);
+                        const dataISO = match ? match[1] : '1900-01-01'; // Fallback se não tiver data no nome
+                        const origem = f.name.toLowerCase().includes('inventario') ? 'Excel' : 'App Mobile';
+                        
+                        return { ...f, dataISO, origem };
+                    });
+
+                // 3. Ordena de forma decrescente (Do mais novo para o mais velho)
+                jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
+
+                // 4. Preenche o Select de Histórico no Cabeçalho
+                const selectHist = document.getElementById('select-historico');
+                
+                if (jsonFiles.length > 0) {
+                    selectHist.innerHTML = '';
+                    jsonFiles.forEach((arq, index) => {
+                        const opt = document.createElement('option');
+                        opt.value = arq.download_url; // Salva o link direto (RAW) do arquivo
+                        
+                        // Formata a data de YYYY-MM-DD para DD/MM/YYYY para exibição elegante
+                        let dataBR = arq.dataISO;
+                        if (arq.dataISO !== '1900-01-01') {
+                            const partes = arq.dataISO.split('-');
+                            dataBR = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                        }
+                        
+                        opt.textContent = `${dataBR} - Origem: ${arq.origem}`;
+                        if (index === 0) opt.selected = true; // Deixa o mais recente já selecionado
+                        
+                        selectHist.appendChild(opt);
+                    });
+                    
+                    selectHist.classList.remove('hidden');
+                    
+                    // 5. Faz o fetch final para carregar e exibir os dados do arquivo mais recente
+                    await carregarDados(jsonFiles[0].download_url);
+                } else {
+                    throw new Error('Nenhum arquivo JSON encontrado no repositório.');
+                }
+
+            } catch (error) {
+                console.warn(error);
+                alert("Nenhum arquivo de backup foi encontrado ou houve falha na rede. O sistema iniciará vazio.");
+                iniciarInterfaceVazia();
+            }
+        }
+
+        async function carregarHistorico(urlArquivo) {
+            if (!urlArquivo) return;
+            try {
+                await carregarDados(urlArquivo);
+                
+                // Pega o texto amigável do select (Data e Origem) para mostrar no aviso
+                const select = document.getElementById('select-historico');
+                const textoAmigavel = select.options[select.selectedIndex].text;
+                mostrarToast("Histórico carregado: " + textoAmigavel);
+                
+            } catch (error) {
+                alert("Erro ao carregar o arquivo de histórico selecionado.");
+                iniciarInterfaceVazia();
+            }
+        }
+
+        async function carregarDados(urlArquivo) {
+            const responseData = await fetch(urlArquivo);
+            if (!responseData.ok) throw new Error('Arquivo de dados não pôde ser baixado: ' + urlArquivo);
+            
+            const jsonLido = await responseData.json();
+            
+            // Reseta a base de dados e a grade para o estado zero, evitando mistura de dados temporais
+            dadosColetados = {};
+            filiais.forEach(f => {
+                Object.keys(inventarioBase).forEach(t => {
+                    inventarioGrid[`${f}_${t}`] = [...inventarioBase[t]];
+                });
+            });
+            
+            // Injeta o arquivo do GitHub na memória e ajusta a grade
+            jsonLido.forEach(item => {
+                const filial = (item.filial || "").trim();
+                const tipo = (item.tipo || "").trim();
+                const id = (item.id || "").trim();
+
+                if (filial && tipo && id) {
+                    item.filial = filial;
+                    item.tipo = tipo;
+                    item.id = id;
+                    item.codigo = item.codigo === null || item.codigo === undefined ? "" : String(item.codigo).trim();
+                    item.tipo_extintor = item.tipo_extintor === null || item.tipo_extintor === undefined ? "" : String(item.tipo_extintor).trim().toUpperCase();
+                    item.manutencao = item.manutencao || "";
+                    
+                    const chave = `${filial}_${tipo}_${id}`;
+                    dadosColetados[chave] = item;
+
+                    const chaveGrid = `${filial}_${tipo}`;
+                    if (inventarioGrid[chaveGrid]) {
+                        if (!inventarioGrid[chaveGrid].includes(id)) {
+                            inventarioGrid[chaveGrid].push(id);
+                        }
+                        inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                    }
+                }
+            });
+
+            iniciarInterfaceVazia(); // Executa o setup visual agora que os dados estão carregados
+        }
+
+        function iniciarInterfaceVazia() {
+            // Entra na tela principal e atualiza o Dashboard com o que estiver na memória
+            mudarFilial('DASHBOARD');
+        }
 
         function renderizarMenuFiliais() {
             const nav = document.getElementById('nav-filiais');
@@ -615,18 +744,6 @@
         // 6. MOTOR DO DASHBOARD (VISÃO GERENCIAL E FUTURO INTEGRADOR WEB)
         // =========================================================================
         function atualizarDashboard() {
-            /* [VISÃO DE FUTURO - INTEGRAÇÃO GITHUB]
-               Para alimentar esse painel com os dados online do repositório no futuro, 
-               substituiremos a leitura local de 'dadosColetados' por um fetch:
-               
-               fetch('https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/dados_atualizados.json')
-                 .then(response => response.json())
-                 .then(dataOnline => {
-                     // Converter o array dataOnline em formato utilizável aqui
-                     processarPainelDashboard(dataOnline);
-                 });
-            */
-            
             const container = document.getElementById('dashboard-content');
             container.innerHTML = '';
 
