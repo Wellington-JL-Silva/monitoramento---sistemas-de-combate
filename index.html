@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SGI Vistoria - AL Industrial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        alblue: '#0070C0', // Azul Corporativo AL
+                        aldark: '#262626', // Cinza Escuro AL
+                        algreen: '#00B050',
+                        alred: '#FF0000',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Oculta scrollbar para um visual mais limpo estilo App */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans flex flex-col h-screen overflow-hidden">
+
+    <!-- INPUT INVISÍVEL PARA IMPORTAÇÃO DE ARQUIVO -->
+    <input type="file" id="file-import" accept=".json, .txt" class="hidden" onchange="importarJSON(event)">
+
+    <!-- HEADER: Título e Exportação -->
+    <header class="bg-aldark text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
+        <div>
+            <h1 class="text-lg font-bold">SGI Vistoria</h1>
+            <p class="text-xs text-gray-400">AL Industrial - Coleta Mobile</p>
+        </div>
+        <button onclick="abrirModalExportacao()" class="bg-alblue hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            Finalizar
+        </button>
+    </header>
+
+    <!-- NAVEGAÇÃO PRINCIPAL: Filiais -->
+    <nav class="bg-white border-b border-gray-200 shrink-0">
+        <ul id="nav-filiais" class="flex overflow-x-auto no-scrollbar snap-x">
+            <!-- Gerado via JS -->
+        </ul>
+    </nav>
+
+    <!-- NAVEGAÇÃO SECUNDÁRIA: Categorias de Equipamentos -->
+    <nav class="bg-gray-50 border-b border-gray-200 p-2 shrink-0">
+        <ul id="nav-tipos" class="flex gap-2 overflow-x-auto no-scrollbar">
+            <!-- Gerado via JS -->
+        </ul>
+    </nav>
+
+    <!-- MAIN CONTENT: Grid Estilo "Assentos de Cinema" -->
+    <main class="flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <div class="flex justify-between items-end mb-4">
+            <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
+            <button onclick="adicionarIDCustomizado()" class="text-alblue text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                + Novo ID
+            </button>
+        </div>
+        
+        <div id="grid-equipamentos" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+            <!-- Botões gerados via JS -->
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL DE VISTORIA (Checklist) -->
+    <!-- ========================================================================= -->
+    <div id="modal-vistoria" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex-col justify-end sm:justify-center items-center">
+        <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col max-h-[90vh]">
+            
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <div>
+                    <h3 id="modal-title" class="text-xl font-bold text-aldark">EXTINTOR E-01</h3>
+                    <p id="modal-subtitle" class="text-xs text-gray-500">Ferragens</p>
+                </div>
+                <button onclick="fecharModal('modal-vistoria')" class="text-gray-400 hover:text-red-500 p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div id="form-checklist" class="overflow-y-auto flex-1 flex flex-col gap-5 pb-4 no-scrollbar">
+                <!-- Campos injetados via JS dependendo do tipo -->
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-gray-100 flex gap-2 shrink-0">
+                <button onclick="excluirEquipamento()" class="flex-1 bg-red-100 text-red-700 py-3 rounded-xl font-bold shadow-sm hover:bg-red-200">Excluir</button>
+                <button onclick="fecharModal('modal-vistoria')" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold">Cancelar</button>
+                <button onclick="salvarVistoria()" class="flex-1 bg-alblue text-white py-3 rounded-xl font-bold shadow-lg">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL DE EXPORTAÇÃO / IMPORTAÇÃO -->
+    <!-- ========================================================================= -->
+    <div id="modal-export" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex-col justify-center items-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <h3 class="text-2xl font-bold text-aldark mb-2 text-center">Gestão de Coleta</h3>
+            <p class="text-sm text-gray-500 text-center mb-6">Importe um arquivo anterior ou exporte a coleta atual.</p>
+
+            <div class="bg-blue-50 text-blue-800 p-3 rounded-lg mb-4 text-center border border-blue-100">
+                Equipamentos vistoriados: <strong id="contador-export" class="text-xl">0</strong>
+            </div>
+
+            <!-- Botão de Importar -->
+            <button onclick="document.getElementById('file-import').click()" class="w-full bg-blue-100 hover:bg-blue-200 text-alblue py-3 mb-4 rounded-xl font-bold flex justify-center items-center gap-2 border border-blue-300 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Importar Arquivo (.JSON)
+            </button>
+
+            <div class="border-t border-gray-200 my-4"></div>
+
+            <!-- Botões de Exportar -->
+            <div class="flex flex-col gap-3">
+                <button onclick="exportarJSON('copiar')" class="w-full bg-aldark hover:bg-black text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    Copiar JSON (Área de Transferência)
+                </button>
+                <button onclick="exportarJSON('json')" class="w-full bg-algreen hover:bg-green-600 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Baixar Arquivo (.JSON)
+                </button>
+                <button onclick="exportarJSON('txt')" class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Baixar Arquivo (.TXT)
+                </button>
+            </div>
+
+            <button onclick="fecharModal('modal-export')" class="w-full mt-6 text-gray-500 font-bold py-2 hover:bg-gray-100 rounded-lg">Voltar ao App</button>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+        Notificação
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- LOGICA DO APLICATIVO (JavaScript) -->
+    <!-- ========================================================================= -->
+    <script>
+        // -----------------------------------------
+        // 1. ESTRUTURA DE DADOS
+        // -----------------------------------------
+        const filiais = ["FERRAGENS", "SISTEMAS", "MATRIZ_ALUMINIO", "FILIAL_ALUMINIO", "CENTRAL_ALARMES"];
+        
+        const tiposPadrao = ["EXTINTOR", "HIDRANTE", "ILUMINACAO"];
+        const tiposAlarme = ["ALARME", "DETECTOR"];
+
+        // Inventário base (usado para gerar a grade de cada filial isoladamente)
+        const inventarioBase = {
+            "EXTINTOR": Array.from({length: 40}, (_, i) => `E-${(i+1).toString().padStart(2, '0')}`),
+            "HIDRANTE": Array.from({length: 15}, (_, i) => `H-${(i+1).toString().padStart(2, '0')}`),
+            "ILUMINACAO": Array.from({length: 20}, (_, i) => `L-${(i+1).toString().padStart(2, '0')}`),
+            "ALARME": Array.from({length: 10}, (_, i) => `A-${(i+1).toString().padStart(2, '0')}`),
+            "DETECTOR": Array.from({length: 20}, (_, i) => `D-${(i+1).toString().padStart(2, '0')}`)
+        };
+
+        // Inventário visual (IDs que renderizam na tela inicialmente) INDIVIDUALIZADO POR FILIAL
+        let inventarioGrid = {};
+        filiais.forEach(f => {
+            Object.keys(inventarioBase).forEach(t => {
+                inventarioGrid[`${f}_${t}`] = [...inventarioBase[t]];
+            });
+        });
+
+        // Estado Atual do App
+        let filialAtual = filiais[0];
+        let tipoAtual = tiposPadrao[0];
+        let idEquipamentoAtivo = "";
+
+        // Banco de Dados Local da Coleta (Aqui salvamos as vistorias)
+        // Formato chave: "FILIAL_TIPO_ID" -> Valor: Objeto JSON
+        let dadosColetados = {};
+
+        // -----------------------------------------
+        // 2. INICIALIZAÇÃO DA INTERFACE
+        // -----------------------------------------
+        window.onload = () => {
+            renderizarMenuFiliais();
+            renderizarMenuTipos();
+            renderizarGrid();
+        };
+
+        function renderizarMenuFiliais() {
+            const nav = document.getElementById('nav-filiais');
+            nav.innerHTML = '';
+            filiais.forEach(filial => {
+                const isActive = filial === filialAtual;
+                const li = document.createElement('li');
+                li.className = "snap-center shrink-0";
+                
+                // Formata o nome bonitinho (ex: MATRIZ_ALUMINIO -> Matriz Alumínio)
+                let nomeFormatado = filial.replace("_", " ");
+                
+                li.innerHTML = `
+                    <button onclick="mudarFilial('${filial}')" 
+                        class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+                        ${isActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                        ${nomeFormatado}
+                    </button>
+                `;
+                nav.appendChild(li);
+            });
+        }
+
+        function renderizarMenuTipos() {
+            const nav = document.getElementById('nav-tipos');
+            nav.innerHTML = '';
+            
+            // Central de Alarmes tem botões diferentes
+            const tiposRender = (filialAtual === "CENTRAL_ALARMES") ? tiposAlarme : tiposPadrao;
+            
+            // Se a filial mudou e o tipo atual não pertence a ela, reseta o tipo
+            if (!tiposRender.includes(tipoAtual)) {
+                tipoAtual = tiposRender[0];
+            }
+
+            tiposRender.forEach(tipo => {
+                const isActive = tipo === tipoAtual;
+                const li = document.createElement('li');
+                li.className = "shrink-0";
+                li.innerHTML = `
+                    <button onclick="mudarTipo('${tipo}')" 
+                        class="px-4 py-2 rounded-full font-bold text-sm transition-all shadow-sm
+                        ${isActive ? 'bg-alblue text-white' : 'bg-white text-gray-600 border border-gray-200'}">
+                        ${tipo}
+                    </button>
+                `;
+                nav.appendChild(li);
+            });
+        }
+
+        function renderizarGrid() {
+            const grid = document.getElementById('grid-equipamentos');
+            grid.innerHTML = '';
+            
+            const chaveGrid = `${filialAtual}_${tipoAtual}`;
+            const ids = inventarioGrid[chaveGrid] || [];
+            
+            ids.forEach(id => {
+                const chaveUnica = `${filialAtual}_${tipoAtual}_${id}`;
+                const jaVistoriado = dadosColetados[chaveUnica] !== undefined;
+                
+                // Cores do grid: Verde se foi vistoriado, Cinza se não foi.
+                const bgClass = jaVistoriado ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-600 shadow-sm';
+                const checkIcon = jaVistoriado ? `<div class="absolute top-1 right-1 text-green-600"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>` : '';
+
+                const btn = document.createElement('button');
+                btn.className = `relative aspect-square flex flex-col items-center justify-center rounded-xl border-2 font-bold text-sm sm:text-base active:scale-95 transition-transform ${bgClass}`;
+                btn.onclick = () => abrirChecklist(id);
+                btn.innerHTML = `${checkIcon} ${id}`;
+                grid.appendChild(btn);
+            });
+        }
+
+        // -----------------------------------------
+        // 3. INTERAÇÕES DE NAVEGAÇÃO E GRID
+        // -----------------------------------------
+        function mudarFilial(novaFilial) {
+            filialAtual = novaFilial;
+            renderizarMenuFiliais();
+            renderizarMenuTipos();
+            renderizarGrid();
+        }
+
+        function mudarTipo(novoTipo) {
+            tipoAtual = novoTipo;
+            renderizarMenuTipos();
+            renderizarGrid();
+        }
+
+        function adicionarIDCustomizado() {
+            const prefixo = tipoAtual.charAt(0) + "-";
+            const novoID = prompt("Digite o novo ID/TAG (Ex: " + prefixo + "99):", prefixo);
+            if (novoID && novoID.trim() !== "") {
+                const limpo = novoID.trim().toUpperCase();
+                const chaveGrid = `${filialAtual}_${tipoAtual}`;
+                if (!inventarioGrid[chaveGrid].includes(limpo)) {
+                    inventarioGrid[chaveGrid].push(limpo);
+                    inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                    renderizarGrid();
+                }
+                abrirChecklist(limpo);
+            }
+        }
+
+        function excluirEquipamento() {
+            const confirmacao = confirm(`Deseja realmente EXCLUIR o equipamento ${idEquipamentoAtivo}?\nEle será removido da grade e dos dados coletados.`);
+            if(confirmacao) {
+                const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+                delete dadosColetados[chave];
+                
+                const chaveGrid = `${filialAtual}_${tipoAtual}`;
+                inventarioGrid[chaveGrid] = inventarioGrid[chaveGrid].filter(id => id !== idEquipamentoAtivo);
+                
+                fecharModal('modal-vistoria');
+                renderizarGrid();
+                mostrarToast(`${idEquipamentoAtivo} Excluído!`);
+            }
+        }
+
+        // Função ponte para ler datas que vêm do Excel e exibir no calendário do HTML (YYYY-MM-DD)
+        function formatarDataParaInput(dataBR, dataRaw, dataFallback) {
+            if (dataRaw) return dataRaw; // Se foi coletado no próprio celular agora
+            if (dataBR && dataBR.includes('/')) { // Se veio importado do Excel (DD/MM/YYYY)
+                const partes = dataBR.split('/');
+                if (partes.length === 3) return `${partes[2]}-${partes[1]}-${partes[0]}`;
+            }
+            return dataFallback; // Se estiver em branco
+        }
+
+        // -----------------------------------------
+        // 4. LÓGICA DO CHECKLIST (MODAL)
+        // -----------------------------------------
+        function abrirChecklist(id) {
+            idEquipamentoAtivo = id;
+            document.getElementById('modal-title').innerText = `${tipoAtual} ${id}`;
+            document.getElementById('modal-subtitle').innerText = filialAtual.replace("_", " ");
+            
+            const chave = `${filialAtual}_${tipoAtual}_${id}`;
+            const dadosSalvos = dadosColetados[chave] || {}; 
+
+            const form = document.getElementById('form-checklist');
+            form.innerHTML = ''; // Limpa formulário antigo
+
+            const hojeDataISO = new Date().toISOString().split('T')[0];
+            const vistoriaISO = formatarDataParaInput(dadosSalvos.vistoria, dadosSalvos.vistoria_raw, hojeDataISO);
+
+            // Injeta campos baseados no TIPO de equipamento
+            if (tipoAtual === "EXTINTOR") {
+                // NOVOS CAMPOS: Código e Tipo do Extintor (Com valor vazio garantido caso não tenha código)
+                form.innerHTML += `
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Código do Extintor (Opcional)</p>
+                        <input type="text" id="input-codigo" value="${dadosSalvos.codigo || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue placeholder-gray-400" placeholder="Ex: 12345 (Ou deixe em branco)">
+                    </div>
+                `;
+                form.innerHTML += `
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Tipo do Extintor</p>
+                        <input type="text" id="input-tipo-extintor" value="${dadosSalvos.tipo_extintor || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue uppercase placeholder-gray-400" placeholder="Ex: PQS, AP, CO2">
+                    </div>
+                `;
+
+                form.innerHTML += criarGrupoBotoes('Condição Geral', 'condicao', dadosSalvos.condicao);
+                form.innerHTML += criarGrupoBotoes('Manômetro/Peso', 'manometro', dadosSalvos.manometro);
+                form.innerHTML += criarGrupoBotoes('Sinalização', 'sinalizacao', dadosSalvos.sinalizacao);
+
+                // CAMPO: Data de Manutenção
+                const manutencaoISO = formatarDataParaInput(dadosSalvos.manutencao, dadosSalvos.manutencao_raw, '');
+                form.innerHTML += criarCampoData('Próxima Manutenção / Validade', 'manutencao', manutencaoISO);
+
+                form.innerHTML += criarCampoData('Data Vistoria', 'vistoria', vistoriaISO);
+            } 
+            else if (tipoAtual === "HIDRANTE") {
+                form.innerHTML += criarGrupoBotoes('Esguicho/Chave', 'esguicho', dadosSalvos.esguicho);
+                form.innerHTML += criarGrupoBotoes('Mangueira', 'mangueira', dadosSalvos.mangueira);
+                form.innerHTML += criarGrupoBotoes('Sinalização', 'sinalizacao', dadosSalvos.sinalizacao);
+                form.innerHTML += criarCampoData('Data Vistoria', 'vistoria', vistoriaISO);
+            }
+            else if (tipoAtual === "ILUMINACAO") {
+                form.innerHTML += criarGrupoBotoes('Condição Geral', 'condicao', dadosSalvos.condicao);
+                form.innerHTML += criarCampoData('Data Vistoria', 'vistoria', vistoriaISO);
+            }
+            else if (tipoAtual === "ALARME" || tipoAtual === "DETECTOR") {
+                form.innerHTML += criarGrupoBotoes('Condição de Teste', 'condicao', dadosSalvos.condicao);
+                
+                const valVistoria = dadosSalvos.vistoria || "PORTARIA";
+                form.innerHTML += `
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Local/Data Vistoria</p>
+                        <input type="text" id="input-vistoria" value="${valVistoria}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold outline-none focus:border-alblue">
+                    </div>
+                `;
+            }
+
+            document.getElementById('modal-vistoria').classList.remove('hidden');
+            document.getElementById('modal-vistoria').classList.add('flex');
+        }
+
+        // Templates de componentes para o Modal
+        function criarGrupoBotoes(label, idCampo, valorSalvo) {
+            const isOK = valorSalvo === 'OK';
+            const isNC = valorSalvo === 'NC';
+            
+            return `
+                <div class="chk-group" data-campo="${idCampo}">
+                    <p class="text-sm font-bold text-gray-700 mb-2">${label}</p>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="selecionarBotaoCheck(this, 'OK')" class="flex-1 py-3 rounded-lg border-2 font-bold transition-all ${isOK ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-gray-200 text-gray-500'}">OK (Conforme)</button>
+                        <button type="button" onclick="selecionarBotaoCheck(this, 'NC')" class="flex-1 py-3 rounded-lg border-2 font-bold transition-all ${isNC ? 'bg-red-100 border-red-500 text-red-700' : 'bg-white border-gray-200 text-gray-500'}">NC (Anomalia)</button>
+                    </div>
+                    <input type="hidden" id="input-${idCampo}" value="${valorSalvo || 'OK'}">
+                </div>
+            `;
+        }
+
+        function criarCampoData(label, idCampo, valorDataISO) {
+            return `
+                <div>
+                    <p class="text-sm font-bold text-gray-700 mb-2">${label}</p>
+                    <input type="date" id="input-${idCampo}" value="${valorDataISO}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue">
+                </div>
+            `;
+        }
+
+        function selecionarBotaoCheck(btnClick, valor) {
+            const container = btnClick.parentElement;
+            const botoes = container.querySelectorAll('button');
+            const hiddenInput = container.parentElement.querySelector('input[type="hidden"]');
+            
+            botoes.forEach(b => {
+                b.className = "flex-1 py-3 rounded-lg border-2 font-bold transition-all bg-white border-gray-200 text-gray-500";
+            });
+
+            if (valor === 'OK') {
+                btnClick.className = "flex-1 py-3 rounded-lg border-2 font-bold transition-all bg-green-100 border-green-500 text-green-700";
+            } else {
+                btnClick.className = "flex-1 py-3 rounded-lg border-2 font-bold transition-all bg-red-100 border-red-500 text-red-700";
+            }
+            hiddenInput.value = valor;
+        }
+
+        // SALVA OS DADOS NO OBJETO GLOBAL E FECHA MODAL
+        function salvarVistoria() {
+            const obj = {
+                filial: filialAtual,
+                tipo: tipoAtual,
+                id: idEquipamentoAtivo
+            };
+
+            // Captura os dados baseado no tipo e aplica .trim() para remover espaços acidentais
+            if (tipoAtual === "EXTINTOR") {
+                obj.codigo = document.getElementById('input-codigo').value.trim();
+                obj.tipo_extintor = document.getElementById('input-tipo-extintor').value.trim().toUpperCase(); 
+                
+                obj.condicao = document.getElementById('input-condicao').value;
+                obj.manometro = document.getElementById('input-manometro').value;
+                obj.sinalizacao = document.getElementById('input-sinalizacao').value;
+
+                // Tratamento da Data de Manutenção
+                const inputManut = document.getElementById('input-manutencao');
+                if (inputManut && inputManut.value) {
+                    const dataRaw = inputManut.value;
+                    const partes = dataRaw.split('-');
+                    obj.manutencao = `${partes[2]}/${partes[1]}/${partes[0]}`; // Formato Excel (BR)
+                    obj.manutencao_raw = dataRaw;
+                } else {
+                    obj.manutencao = "";
+                }
+            } 
+            else if (tipoAtual === "HIDRANTE") {
+                obj.esguicho = document.getElementById('input-esguicho').value;
+                obj.mangueira = document.getElementById('input-mangueira').value;
+                obj.sinalizacao = document.getElementById('input-sinalizacao').value;
+            }
+            else if (tipoAtual === "ILUMINACAO") {
+                obj.condicao = document.getElementById('input-condicao').value;
+            }
+            else if (tipoAtual === "ALARME" || tipoAtual === "DETECTOR") {
+                obj.condicao = document.getElementById('input-condicao').value;
+            }
+
+            // Tratamento da Data de Vistoria
+            const inputVist = document.getElementById('input-vistoria');
+            if (inputVist.type === "date") {
+                const dataRaw = inputVist.value; 
+                if(dataRaw) {
+                    const partes = dataRaw.split('-');
+                    obj.vistoria = `${partes[2]}/${partes[1]}/${partes[0]}`; 
+                    obj.vistoria_raw = dataRaw; 
+                } else {
+                    obj.vistoria = "";
+                }
+            } else {
+                obj.vistoria = inputVist.value.trim();
+            }
+
+            // Salva no banco de dados local
+            const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+            dadosColetados[chave] = obj;
+
+            fecharModal('modal-vistoria');
+            renderizarGrid(); 
+        }
+
+        // -----------------------------------------
+        // 5. GESTÃO DE MODAIS E IMPORTAÇÃO / EXPORTAÇÃO
+        // -----------------------------------------
+        function fecharModal(id) {
+            const m = document.getElementById(id);
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function abrirModalExportacao() {
+            const total = Object.keys(dadosColetados).length;
+            document.getElementById('contador-export').innerText = total;
+
+            const m = document.getElementById('modal-export');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        // MOTOR CENTRAL DE IMPORTAÇÃO JSON (100% BLINDADO PARA CAMPOS VAZIOS)
+        function importarJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonLido = JSON.parse(e.target.result);
+                    let importados = 0;
+
+                    jsonLido.forEach(item => {
+                        // Limpa espaços acidentais nas chaves mestras
+                        const filial = (item.filial || "").trim();
+                        const tipo = (item.tipo || "").trim();
+                        const id = (item.id || "").trim();
+
+                        if (filial && tipo && id) {
+                            
+                            // Normalização Forçada: Se não tiver código, tipo_extintor ou manutenção, garanta que seja string vazia
+                            item.filial = filial;
+                            item.tipo = tipo;
+                            item.id = id;
+                            item.codigo = item.codigo === null || item.codigo === undefined ? "" : String(item.codigo).trim();
+                            item.tipo_extintor = item.tipo_extintor === null || item.tipo_extintor === undefined ? "" : String(item.tipo_extintor).trim().toUpperCase();
+                            item.manutencao = item.manutencao || "";
+                            
+                            const chave = `${filial}_${tipo}_${id}`;
+                            dadosColetados[chave] = item;
+                            importados++;
+
+                            // Atualiza a Grade isolada da Filial_Tipo com os novos IDs lidos no JSON
+                            const chaveGrid = `${filial}_${tipo}`;
+                            if (inventarioGrid[chaveGrid]) {
+                                if (!inventarioGrid[chaveGrid].includes(id)) {
+                                    inventarioGrid[chaveGrid].push(id);
+                                }
+                                // Reordena a lista perfeitamente: E-01, E-02, E-03...
+                                inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                            }
+                        }
+                    });
+
+                    renderizarGrid();
+                    document.getElementById('contador-export').innerText = Object.keys(dadosColetados).length;
+                    
+                    // Avisa quantos foram carregados de verdade!
+                    mostrarToast(`${importados} Itens importados com sucesso!`);
+                    
+                    // Limpa a memória do botão para permitir carregar o mesmo arquivo de novo
+                    event.target.value = '';
+
+                } catch (error) {
+                    alert("Erro ao ler o arquivo JSON. Certifique-se que o formato não está quebrado.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportarJSON(metodo) {
+            const arrayFinal = Object.values(dadosColetados);
+            
+            if (arrayFinal.length === 0) {
+                alert("Nenhum dado foi coletado ainda. Vistorie ao menos um equipamento.");
+                return;
+            }
+
+            const stringJSON = JSON.stringify(arrayFinal, null, 2);
+            const d = new Date();
+            const dataStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+            const nomeBase = `coleta_vistoria_AL_Industrial_${dataStr}`;
+
+            if (metodo === 'copiar') {
+                copiarParaAreaTransferencia(stringJSON);
+            } 
+            else if (metodo === 'json') {
+                baixarArquivo(stringJSON, `${nomeBase}.json`, 'application/json');
+            } 
+            else if (metodo === 'txt') {
+                baixarArquivo(stringJSON, `JSON_da_coleta_${dataStr}.txt`, 'text/plain');
+            }
+        }
+
+        function copiarParaAreaTransferencia(texto) {
+            const el = document.createElement('textarea');
+            el.value = texto;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            mostrarToast("JSON Copiado com sucesso!");
+            fecharModal('modal-export');
+        }
+
+        function baixarArquivo(conteudo, nomeArquivo, mimeType) {
+            const a = document.createElement("a");
+            const file = new Blob([conteudo], {type: mimeType});
+            a.href = URL.createObjectURL(file);
+            a.download = nomeArquivo;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            
+            fecharModal('modal-export');
+        }
+
+        function mostrarToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
