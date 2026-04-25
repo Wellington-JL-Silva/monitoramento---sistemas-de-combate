@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SGI Vistoria - AL Industrial</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- NOVO: Importação da Biblioteca Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
@@ -69,18 +68,18 @@
     <main id="view-dashboard" class="flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
         <h2 class="text-xl font-bold text-aldark uppercase tracking-wider mb-4 border-b-2 border-alblue pb-2">Monitoramento dos Sistemas de Combate</h2>
         
-        <!-- NOVO: Container dos Gráficos (Grid Responsiva) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- NOVO: CONTAINER DE GRÁFICOS (CHART.JS) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" id="dashboard-charts">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-2">Status Geral de Equipamentos</h3>
+                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Status de Conformidade</h3>
                 <div class="relative h-48 w-full">
-                    <canvas id="chart-status"></canvas>
+                    <canvas id="chartStatus"></canvas>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-2">Distribuição de Extintores</h3>
-                <div class="relative h-48 w-full">
-                    <canvas id="chart-tipos"></canvas>
+                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Tipos de Extintores</h3>
+                <div class="relative h-48 w-full flex justify-center">
+                    <canvas id="chartTipos"></canvas>
                 </div>
             </div>
         </div>
@@ -91,7 +90,23 @@
     </main>
 
     <!-- ========================================================================= -->
-    <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" -->
+    <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" (Adicionado ID view-coleta) -->
+    <!-- ========================================================================= -->
+    <main id="view-coleta" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <div class="flex justify-between items-end mb-4">
+            <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
+            <button onclick="adicionarIDCustomizado()" class="text-alblue text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                + Novo ID
+            </button>
+        </div>
+        
+        <div id="grid-equipamentos" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+            <!-- Botões gerados via JS -->
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL DE VISTORIA (Checklist) -->
     <!-- ========================================================================= -->
     <div id="modal-vistoria" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex-col justify-end sm:justify-center items-center">
         <div class="bg-white w-full sm:w-96 rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col max-h-[90vh]">
@@ -196,6 +211,10 @@
         let filialAtual = 'DASHBOARD';
         let tipoAtual = tiposPadrao[0];
         let idEquipamentoAtivo = "";
+
+        // Instâncias dos Gráficos para evitar sobreposição e bugs visuais
+        let chartStatusInstancia = null;
+        let chartTiposInstancia = null;
 
         // Banco de Dados Local da Coleta (Aqui salvamos as vistorias)
         // Formato chave: "FILIAL_TIPO_ID" -> Valor: Objeto JSON
@@ -755,9 +774,6 @@
             // Transforma o Objeto de dados coletados em um Array plano para processamento
             const arrayDados = Object.values(dadosColetados);
 
-            // NOVO: Renderiza os gráficos do Chart.js com os dados formatados
-            renderizarGraficos(arrayDados);
-
             // 1. Calcula a Saúde Global da Fábrica (Contempla TODOS, inclusive a Central de Alarmes)
             arrayDados.forEach(item => {
                 let isNC = false;
@@ -787,7 +803,7 @@
                     if (item.filial === f) {
                         let isNC = false;
                         
-                        // Lógica para detectar se o equipamento possui anomalias (NC)
+                        // Lógica para detectar se o equipamento possui não conformidades (NC)
                         if (item.tipo === 'EXTINTOR') {
                             if (item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
                         } else if (item.tipo === 'HIDRANTE') {
@@ -865,41 +881,36 @@
                         </div>
                         <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl">
                             <div class="text-2xl font-black text-red-700">${globalNC}</div>
-                            <div class="text-xs font-bold text-red-800 uppercase mt-1">Anomalias (NC)</div>
+                            <div class="text-xs font-bold text-red-800 uppercase mt-1">não conformidades (NC)</div>
                         </div>
                     </div>
                 </div>
             `;
 
             container.innerHTML = htmlGlobal + htmlFiliais;
+
+            // Renderiza os Gráficos de Chart.js após montar o HTML
+            renderizarGraficos(arrayDados);
         }
 
-        // =========================================================================
-        // 7. MOTOR GRÁFICO (CHART.JS)
-        // =========================================================================
-        
-        // Variáveis globais para armazenar os gráficos e permitir destruí-los ao recarregar a tela
-        let chartStatus = null;
-        let chartTipos = null;
-
-        function renderizarGraficos(arrayDados) {
-            // 1. Coleta os Dados - Status Geral
+        function renderizarGraficos(dados) {
+            // Conta os Status (OK vs NC)
             let totalOK = 0;
             let totalNC = 0;
-            
-            // 2. Coleta os Dados - Tipos de Extintor
-            let tiposExtintor = {};
 
-            arrayDados.forEach(item => {
-                // Lógica de OK vs NC
+            // Conta Tipos de Extintor
+            let contagemTipos = {};
+
+            dados.forEach(item => {
+                // Lógica de OK/NC
                 let isNC = false;
                 if (item.tipo === 'EXTINTOR') {
                     if (item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
                     
-                    // Contagem de Tipos para a Pizza
-                    let tipoExt = (item.tipo_extintor && item.tipo_extintor.trim() !== "") ? item.tipo_extintor.toUpperCase() : "N/D";
-                    tiposExtintor[tipoExt] = (tiposExtintor[tipoExt] || 0) + 1;
-                    
+                    // Contagem de Tipos (Apenas para extintores)
+                    let tipoExt = item.tipo_extintor ? item.tipo_extintor.toUpperCase() : 'N/I';
+                    if(tipoExt === "") tipoExt = "N/I"; // Não Identificado
+                    contagemTipos[tipoExt] = (contagemTipos[tipoExt] || 0) + 1;
                 } else if (item.tipo === 'HIDRANTE') {
                     if (item.esguicho === 'NC' || item.mangueira === 'NC' || item.sinalizacao === 'NC') isNC = true;
                 } else {
@@ -909,54 +920,46 @@
                 if (isNC) totalNC++; else totalOK++;
             });
 
-            // Destrói os gráficos antigos se existirem (previne sobreposição visual ao recarregar aba)
-            if (chartStatus) chartStatus.destroy();
-            if (chartTipos) chartTipos.destroy();
-
-            // GRÁFICO 1: Status Geral (Colunas)
-            const ctxStatus = document.getElementById('chart-status').getContext('2d');
-            chartStatus = new Chart(ctxStatus, {
+            // 1. Gráfico de Status (Barra)
+            const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+            if (chartStatusInstancia) chartStatusInstancia.destroy(); // Destrói o antigo antes de desenhar o novo
+            
+            chartStatusInstancia = new Chart(ctxStatus, {
                 type: 'bar',
                 data: {
-                    labels: ['Conformes (OK)', 'Anomalias (NC)'],
+                    labels: ['Conformes (OK)', 'não conformidades (NC)'],
                     datasets: [{
                         label: 'Equipamentos',
                         data: [totalOK, totalNC],
-                        backgroundColor: [
-                            '#00B050', // Verde AL
-                            '#FF0000'  // Vermelho AL
-                        ],
-                        borderRadius: 6,
-                        barPercentage: 0.6
+                        backgroundColor: ['#00B050', '#FF0000'], // Verde AL e Vermelho AL
+                        borderRadius: 5
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false } // Oculta legenda desnecessária
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } } // Exibe apenas números inteiros
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 }
             });
 
-            // GRÁFICO 2: Tipos de Extintor (Rosca/Doughnut)
-            const labelsTipos = Object.keys(tiposExtintor);
-            const dataTipos = Object.values(tiposExtintor);
-            
-            // Paleta corporativa AL Industrial (Azul, Cinza Escuro, Cinza Claro, Verde e Amarelo Secundários)
-            const coresCorporativas = ['#0070C0', '#262626', '#a5a5a5', '#5b9bd5', '#70ad47'];
+            // 2. Gráfico de Tipos (Doughnut/Rosca)
+            const ctxTipos = document.getElementById('chartTipos').getContext('2d');
+            if (chartTiposInstancia) chartTiposInstancia.destroy();
 
-            const ctxTipos = document.getElementById('chart-tipos').getContext('2d');
-            chartTipos = new Chart(ctxTipos, {
+            const labelsTipos = Object.keys(contagemTipos);
+            const dataTipos = Object.values(contagemTipos);
+            
+            // Cores corporativas (Azul AL e Tons de Cinza)
+            const backgroundColors = ['#0070C0', '#262626', '#808080', '#A6A6A6', '#D9D9D9'];
+
+            chartTiposInstancia = new Chart(ctxTipos, {
                 type: 'doughnut',
                 data: {
-                    labels: labelsTipos.length > 0 ? labelsTipos : ['Sem dados'],
+                    labels: labelsTipos.length > 0 ? labelsTipos : ['Nenhum'],
                     datasets: [{
                         data: dataTipos.length > 0 ? dataTipos : [1],
-                        backgroundColor: dataTipos.length > 0 ? coresCorporativas : ['#e5e7eb'],
+                        backgroundColor: dataTipos.length > 0 ? backgroundColors : ['#E5E7EB'],
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
@@ -964,12 +967,9 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '65%', // Deixa o buraco da rosca mais elegante
+                    cutout: '60%',
                     plugins: {
-                        legend: { 
-                            position: 'right', 
-                            labels: { boxWidth: 12, font: { size: 10 } } 
-                        }
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
                     }
                 }
             });
