@@ -50,15 +50,28 @@
         </ul>
     </nav>
 
-    <!-- NAVEGAÇÃO SECUNDÁRIA: Categorias de Equipamentos -->
-    <nav class="bg-gray-50 border-b border-gray-200 p-2 shrink-0">
+    <!-- NAVEGAÇÃO SECUNDÁRIA: Categorias de Equipamentos (Adicionado ID container-nav-tipos) -->
+    <nav id="container-nav-tipos" class="bg-gray-50 border-b border-gray-200 p-2 shrink-0 hidden">
         <ul id="nav-tipos" class="flex gap-2 overflow-x-auto no-scrollbar">
             <!-- Gerado via JS -->
         </ul>
     </nav>
 
-    <!-- MAIN CONTENT: Grid Estilo "Assentos de Cinema" -->
-    <main class="flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+    <!-- ========================================================================= -->
+    <!-- VIEW: DASHBOARD GLOBAL (NOVO) -->
+    <!-- ========================================================================= -->
+    <main id="view-dashboard" class="flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <h2 class="text-xl font-bold text-aldark uppercase tracking-wider mb-4 border-b-2 border-alblue pb-2">Monitoramento dos Sistemas de Combate</h2>
+        
+        <div id="dashboard-content" class="flex flex-col gap-4">
+            <!-- Cartões gerados dinamicamente via JS -->
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" (Adicionado ID view-coleta) -->
+    <!-- ========================================================================= -->
+    <main id="view-coleta" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
         <div class="flex justify-between items-end mb-4">
             <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
             <button onclick="adicionarIDCustomizado()" class="text-alblue text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
@@ -173,8 +186,8 @@
             });
         });
 
-        // Estado Atual do App
-        let filialAtual = filiais[0];
+        // Estado Atual do App (ALTERADO para iniciar no Dashboard)
+        let filialAtual = 'DASHBOARD';
         let tipoAtual = tiposPadrao[0];
         let idEquipamentoAtivo = "";
 
@@ -186,14 +199,26 @@
         // 2. INICIALIZAÇÃO DA INTERFACE
         // -----------------------------------------
         window.onload = () => {
-            renderizarMenuFiliais();
-            renderizarMenuTipos();
-            renderizarGrid();
+            // Força a entrada na aba inicial corretamente
+            mudarFilial('DASHBOARD');
         };
 
         function renderizarMenuFiliais() {
             const nav = document.getElementById('nav-filiais');
             nav.innerHTML = '';
+            
+            // NOVO: Adiciona a aba fixa de DASHBOARD no início
+            const isDashActive = 'DASHBOARD' === filialAtual;
+            nav.innerHTML += `
+                <li class="snap-center shrink-0">
+                    <button onclick="mudarFilial('DASHBOARD')" 
+                        class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+                        ${isDashActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                        📊 DASHBOARD
+                    </button>
+                </li>
+            `;
+
             filiais.forEach(filial => {
                 const isActive = filial === filialAtual;
                 const li = document.createElement('li');
@@ -269,8 +294,20 @@
         function mudarFilial(novaFilial) {
             filialAtual = novaFilial;
             renderizarMenuFiliais();
-            renderizarMenuTipos();
-            renderizarGrid();
+            
+            // NOVO: Lógica para alternar entre a visão de Dashboard e a visão de Coleta
+            if (novaFilial === 'DASHBOARD') {
+                document.getElementById('container-nav-tipos').classList.add('hidden');
+                document.getElementById('view-coleta').classList.add('hidden');
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                atualizarDashboard(); // Alimenta o painel
+            } else {
+                document.getElementById('container-nav-tipos').classList.remove('hidden');
+                document.getElementById('view-coleta').classList.remove('hidden');
+                document.getElementById('view-dashboard').classList.add('hidden');
+                renderizarMenuTipos();
+                renderizarGrid();
+            }
         }
 
         function mudarTipo(novoTipo) {
@@ -492,6 +529,7 @@
 
             fecharModal('modal-vistoria');
             renderizarGrid(); 
+            atualizarDashboard(); // NOVO: Mantém o dashboard sempre atualizado em background
         }
 
         // -----------------------------------------
@@ -563,12 +601,155 @@
                     
                     // Limpa a memória do botão para permitir carregar o mesmo arquivo de novo
                     event.target.value = '';
+                    
+                    atualizarDashboard(); // NOVO: Atualiza o dashboard com os dados recém-importados
 
                 } catch (error) {
                     alert("Erro ao ler o arquivo JSON. Certifique-se que o formato não está quebrado.");
                 }
             };
             reader.readAsText(file);
+        }
+
+        // =========================================================================
+        // 6. MOTOR DO DASHBOARD (VISÃO GERENCIAL E FUTURO INTEGRADOR WEB)
+        // =========================================================================
+        function atualizarDashboard() {
+            /* [VISÃO DE FUTURO - INTEGRAÇÃO GITHUB]
+               Para alimentar esse painel com os dados online do repositório no futuro, 
+               substituiremos a leitura local de 'dadosColetados' por um fetch:
+               
+               fetch('https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPO/main/dados_atualizados.json')
+                 .then(response => response.json())
+                 .then(dataOnline => {
+                     // Converter o array dataOnline em formato utilizável aqui
+                     processarPainelDashboard(dataOnline);
+                 });
+            */
+            
+            const container = document.getElementById('dashboard-content');
+            container.innerHTML = '';
+
+            let globalOK = 0;
+            let globalNC = 0;
+
+            // Transforma o Objeto de dados coletados em um Array plano para processamento
+            const arrayDados = Object.values(dadosColetados);
+
+            // 1. Calcula a Saúde Global da Fábrica (Contempla TODOS, inclusive a Central de Alarmes)
+            arrayDados.forEach(item => {
+                let isNC = false;
+                if (item.tipo === 'EXTINTOR') {
+                    if (item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                } else if (item.tipo === 'HIDRANTE') {
+                    if (item.esguicho === 'NC' || item.mangueira === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                } else {
+                    if (item.condicao === 'NC') isNC = true;
+                }
+
+                if (isNC) globalNC++; else globalOK++;
+            });
+
+            // 2. Filtra as filiais (Remove a Central de Alarmes da lista de CARDS individuais)
+            const filiaisCNPJ = filiais.filter(f => f !== 'CENTRAL_ALARMES');
+
+            // 3. Gera o painel apenas das filiais reais
+            const htmlFiliais = filiaisCNPJ.map(f => {
+                let stats = {
+                    EXTINTOR: { ok: 0, nc: 0 },
+                    HIDRANTE: { ok: 0, nc: 0 },
+                    OUTROS: { ok: 0, nc: 0 } // Engloba Alarme, Detector e Iluminação
+                };
+
+                arrayDados.forEach(item => {
+                    if (item.filial === f) {
+                        let isNC = false;
+                        
+                        // Lógica para detectar se o equipamento possui anomalias (NC)
+                        if (item.tipo === 'EXTINTOR') {
+                            if (item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                        } else if (item.tipo === 'HIDRANTE') {
+                            if (item.esguicho === 'NC' || item.mangueira === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                        } else {
+                            if (item.condicao === 'NC') isNC = true;
+                        }
+
+                        // Agrupamento para simplificação visual
+                        let grupo = (item.tipo === 'EXTINTOR' || item.tipo === 'HIDRANTE') ? item.tipo : 'OUTROS';
+
+                        if (isNC) {
+                            stats[grupo].nc++;
+                        } else {
+                            stats[grupo].ok++;
+                        }
+                    }
+                });
+
+                // Renderiza o card individual da filial estilo "Widget" Corporativo
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-aldark text-white px-4 py-2 font-bold flex justify-between items-center text-sm">
+                            <span>${f.replace('_', ' ')}</span>
+                            <span class="text-xs text-gray-300 font-normal">Sistemas Ativos</span>
+                        </div>
+                        <div class="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
+                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🧯 Extintores</div>
+                                <div class="flex justify-between items-center px-1">
+                                    <span class="text-green-600 font-black">${stats.EXTINTOR.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                    <span class="${stats.EXTINTOR.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.EXTINTOR.nc} <span class="text-[10px] font-normal">NC</span></span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
+                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🚒 Abrigos / Hidrantes</div>
+                                <div class="flex justify-between items-center px-1">
+                                    <span class="text-green-600 font-black">${stats.HIDRANTE.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                    <span class="${stats.HIDRANTE.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.HIDRANTE.nc} <span class="text-[10px] font-normal">NC</span></span>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
+                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🚨 Alarmes e Ilum.</div>
+                                <div class="flex justify-between items-center px-1">
+                                    <span class="text-green-600 font-black">${stats.OUTROS.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                    <span class="${stats.OUTROS.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.OUTROS.nc} <span class="text-[10px] font-normal">NC</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Cabeçalho de Resumo Global
+            const totalGeral = globalOK + globalNC;
+            const saudePer = totalGeral > 0 ? Math.round((globalOK / totalGeral) * 100) : 0;
+            const corSaude = saudePer < 90 ? 'text-red-600' : 'text-green-600';
+
+            const htmlGlobal = `
+                <div class="flex flex-col gap-3 mb-2">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-gray-500 uppercase tracking-widest">Saúde da Fábrica</div>
+                            <div class="text-3xl font-black ${corSaude}">${totalGeral > 0 ? saudePer + '%' : '--'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-400">Total Vistoriado</div>
+                            <div class="text-xl font-bold text-aldark">${totalGeral} Eqp.</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-xl">
+                            <div class="text-2xl font-black text-green-700">${globalOK}</div>
+                            <div class="text-xs font-bold text-green-800 uppercase mt-1">Conformes (OK)</div>
+                        </div>
+                        <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl">
+                            <div class="text-2xl font-black text-red-700">${globalNC}</div>
+                            <div class="text-xs font-bold text-red-800 uppercase mt-1">Anomalias (NC)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = htmlGlobal + htmlFiliais;
         }
 
         function exportarJSON(metodo) {
