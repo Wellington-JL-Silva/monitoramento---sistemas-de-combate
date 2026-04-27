@@ -55,7 +55,7 @@
         </ul>
     </nav>
 
-    <!-- NAVEGAÇÃO SECUNDÁRIA: Categorias de Equipamentos (Adicionado ID container-nav-tipos) -->
+    <!-- NAVEGAÇÃO SECUNDÁRIA: Categorias de Equipamentos -->
     <nav id="container-nav-tipos" class="bg-gray-50 border-b border-gray-200 p-2 shrink-0 hidden">
         <ul id="nav-tipos" class="flex gap-2 overflow-x-auto no-scrollbar">
             <!-- Gerado via JS -->
@@ -63,12 +63,12 @@
     </nav>
 
     <!-- ========================================================================= -->
-    <!-- VIEW: DASHBOARD GLOBAL (NOVO) -->
+    <!-- VIEW: DASHBOARD GLOBAL -->
     <!-- ========================================================================= -->
     <main id="view-dashboard" class="flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
         <h2 class="text-xl font-bold text-aldark uppercase tracking-wider mb-4 border-b-2 border-alblue pb-2">Monitoramento dos Sistemas de Combate</h2>
         
-        <!-- NOVO: CONTAINER DE GRÁFICOS (CHART.JS) -->
+        <!-- CONTAINER DE GRÁFICOS (CHART.JS) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4" id="dashboard-charts">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Status de Conformidade</h3>
@@ -90,11 +90,11 @@
     </main>
 
     <!-- ========================================================================= -->
-    <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" (Adicionado ID view-coleta) -->
+    <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" -->
     <!-- ========================================================================= -->
     <main id="view-coleta" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
         
-        <!-- NOVO: BOTÃO TOGGLE DOS MINI-GRÁFICOS -->
+        <!-- BOTÃO TOGGLE DOS MINI-GRÁFICOS -->
         <div class="flex justify-between items-end mb-4">
             <div>
                 <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
@@ -107,14 +107,11 @@
             </button>
         </div>
         
-        <!-- NOVO: PAINEL EXPANSÍVEL (ACORDEÃO) DOS MINI-GRÁFICOS -->
+        <!-- PAINEL EXPANSÍVEL (ACORDEÃO MUTANTE) DOS MINI-GRÁFICOS DAS ABAS -->
         <div id="mini-dashboard-filial" class="hidden mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all">
             <h3 class="text-sm font-bold text-gray-500 uppercase mb-3 text-center border-b pb-2 text-alblue">Saúde: <span id="label-mini-dash"></span></h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Condição</span><canvas id="miniChartCond"></canvas></div>
-                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Manômetro</span><canvas id="miniChartManom"></canvas></div>
-                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Validade</span><canvas id="miniChartValidade"></canvas></div>
-                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+            <div id="mini-charts-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- JS injeta os canvases aqui dinamicamente baseados no equipamento -->
             </div>
         </div>
 
@@ -234,43 +231,40 @@
         let chartStatusInstancia = null;
         let chartTiposInstancia = null;
 
-        // NOVO: Instâncias dos Mini-Gráficos Expansíveis
+        // Instâncias dos Mini-Gráficos Expansíveis (Aba Filiais) - Antigas (mantidas por compatibilidade)
         let miniChartCondInst = null;
         let miniChartManomInst = null;
         let miniChartValInst = null;
         let miniChartSinalInst = null;
 
+        // Dicionário Global Inteligente para gerir todas as novas instâncias de Mini-Gráficos
+        let dashChartInstances = {};
+
         // Banco de Dados Local da Coleta
         let dadosColetados = {};
 
         // -----------------------------------------
-        // NOVO: ORDENAÇÃO GLOBAL (MASTER DATA E VISUAL)
+        // ORDENAÇÃO GLOBAL (MASTER DATA E VISUAL)
         // -----------------------------------------
         function reordenarBaseDeDados() {
-            // 1. Extrai para um Array e ordena os dados coletados de forma hierárquica
             const arrayDados = Object.values(dadosColetados);
             
             arrayDados.sort((a, b) => {
-                // Regra 1: Ordenar por Filial
                 const filialCmp = (a.filial || "").localeCompare(b.filial || "");
                 if (filialCmp !== 0) return filialCmp;
                 
-                // Regra 2: Ordenar por Tipo (Extintor, Hidrante, etc)
                 const tipoCmp = (a.tipo || "").localeCompare(b.tipo || "");
                 if (tipoCmp !== 0) return tipoCmp;
                 
-                // Regra 3: Ordenar por ID com Inteligência Numérica Natural (E-06, E-07, E-10)
                 return (a.id || "").localeCompare((b.id || ""), undefined, { numeric: true, sensitivity: 'base' });
             });
 
-            // Remonta o objeto "dadosColetados" garantindo a nova ordem cronológica da memória do JavaScript
             dadosColetados = {};
             arrayDados.forEach(item => {
                 const chave = `${item.filial}_${item.tipo}_${item.id}`;
                 dadosColetados[chave] = item;
             });
 
-            // 2. Ordena também a memória das grades visuais na tela
             Object.keys(inventarioGrid).forEach(key => {
                 inventarioGrid[key].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
             });
@@ -285,14 +279,12 @@
 
         async function inicializarApp() {
             try {
-                // Busca os arquivos na API pública do GitHub
                 const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
                 const responseCat = await fetch(repoApiUrl);
                 
                 if (!responseCat.ok) throw new Error('Falha ao acessar o repositório no GitHub');
                 const files = await responseCat.json();
                 
-                // Filtra JSON e extrai data
                 const jsonFiles = files
                     .filter(f => f.name.endsWith('.json'))
                     .map(f => {
@@ -302,10 +294,8 @@
                         return { ...f, dataISO, origem };
                     });
 
-                // Ordena do mais recente
                 jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
 
-                // Preenche Histórico
                 const selectHist = document.getElementById('select-historico');
                 
                 if (jsonFiles.length > 0) {
@@ -373,6 +363,7 @@
                     item.codigo = item.codigo === null || item.codigo === undefined ? "" : String(item.codigo).trim();
                     item.tipo_extintor = item.tipo_extintor === null || item.tipo_extintor === undefined ? "" : String(item.tipo_extintor).trim().toUpperCase();
                     item.manutencao = item.manutencao || "";
+                    item.teste_mangueira = item.teste_mangueira || ""; // NOVO: Mapeamento do Teste da Mangueira
                     
                     const chave = `${filial}_${tipo}_${id}`;
                     dadosColetados[chave] = item;
@@ -385,7 +376,6 @@
                 }
             });
 
-            // NOVO: Aplica a Ordem Global Mestra antes de desenhar
             reordenarBaseDeDados();
             iniciarInterfaceVazia(); 
         }
@@ -452,7 +442,9 @@
             });
         }
 
-        // NOVO: CONTROLE DO ACORDEÃO E RENDERIZAÇÃO DOS MINI GRÁFICOS
+        // =========================================================================
+        // NOVA DINÂMICA: CONTROLE DOS MINI GRÁFICOS DAS ABAS INDIVIDUAIS
+        // =========================================================================
         function toggleMiniGraficos() {
             const painel = document.getElementById('mini-dashboard-filial');
             const texto = document.getElementById('text-toggle-graficos');
@@ -467,89 +459,170 @@
         }
 
         function renderizarMiniGraficos() {
-            // Só executa a matemática gráfica se o painel estiver aberto na tela
             if(document.getElementById('mini-dashboard-filial').classList.contains('hidden')) return;
 
             document.getElementById('label-mini-dash').innerText = `${filialAtual.replace('_', ' ')} - ${tipoAtual}`;
 
-            // Filtro Local: Pega dados apenas desta Filial e deste Tipo específico
             const arrayLocal = Object.values(dadosColetados).filter(i => i.filial === filialAtual && i.tipo === tipoAtual);
+            const grid = document.getElementById('mini-charts-grid');
 
-            let stats = {
-                cond: { ok: 0, nc: 0 },
-                manom: { ok: 0, nc: 0 },
-                val: { ok: 0, nc: 0 },
-                sinal: { ok: 0, nc: 0 }
+            // Limpa as instâncias de gráficos locais antigas para não dar conflito no Canvas
+            if(miniChartCondInst) { miniChartCondInst.destroy(); miniChartCondInst = null; }
+            if(miniChartManomInst) { miniChartManomInst.destroy(); miniChartManomInst = null; }
+            if(miniChartValInst) { miniChartValInst.destroy(); miniChartValInst = null; }
+            if(miniChartSinalInst) { miniChartSinalInst.destroy(); miniChartSinalInst = null; }
+            if(dashChartInstances['filial_esg']) { dashChartInstances['filial_esg'].destroy(); dashChartInstances['filial_esg'] = null; }
+            if(dashChartInstances['filial_mang']) { dashChartInstances['filial_mang'].destroy(); dashChartInstances['filial_mang'] = null; }
+            if(dashChartInstances['filial_sinal']) { dashChartInstances['filial_sinal'].destroy(); dashChartInstances['filial_sinal'] = null; }
+            if(dashChartInstances['filial_cond']) { dashChartInstances['filial_cond'].destroy(); dashChartInstances['filial_cond'] = null; }
+
+            grid.innerHTML = '';
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+            const desenharMiniPizza = (ctxId, dataOk, dataNc, colorNc) => {
+                const ctx = document.getElementById(ctxId).getContext('2d');
+                if(dataOk === 0 && dataNc === 0) {
+                    return new Chart(ctx, { type: 'doughnut', data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: {enabled: false} } } });
+                }
+                return new Chart(ctx, { type: 'doughnut', data: { labels: ['OK', 'NC'], datasets: [{ data: [dataOk, dataNc], backgroundColor: ['#00B050', colorNc], borderWidth: 2, borderColor: '#ffffff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } });
             };
 
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
-
-            arrayLocal.forEach(item => {
-                // Condição Geral (Todos)
-                if(item.condicao === 'OK') stats.cond.ok++; else if (item.condicao === 'NC') stats.cond.nc++;
-                
-                // Sinalização (Extintores e Hidrantes)
-                if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
-
-                // Validade (Extintores)
-                let isExpired = false;
-                if (item.manutencao && item.manutencao.includes('/')) {
-                    const p = item.manutencao.split('/');
-                    if (p.length === 3) {
-                        const dataM = new Date(p[2], p[1] - 1, p[0]);
-                        if (dataM < hoje) isExpired = true;
+            // Reconstrói a área visual baseada no equipamento escolhido
+            if (tipoAtual === 'EXTINTOR') {
+                grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
+                grid.innerHTML = `
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="miniChartCond"></canvas></div>
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="miniChartManom"></canvas></div>
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="miniChartValidade"></canvas></div>
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+                `;
+                let stats = { cond: { ok: 0, nc: 0 }, manom: { ok: 0, nc: 0 }, val: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
+                    if(item.manometro === 'OK') stats.manom.ok++; else if(item.manometro === 'NC') stats.manom.nc++;
+                    if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
+                    let isExpired = false;
+                    if (item.manutencao && item.manutencao.includes('/')) {
+                        const p = item.manutencao.split('/');
+                        if (p.length === 3 && new Date(p[2], p[1]-1, p[0]) < hoje) isExpired = true;
                     }
-                }
-                if (isExpired) {
-                    stats.val.nc++; 
-                } else if (item.manutencao && item.manutencao.trim() !== "") {
-                    stats.val.ok++; // Só soma OK se houver uma data de manutenção registrada
-                }
+                    if(isExpired) stats.val.nc++; else if(item.manutencao && item.manutencao.trim() !== "") stats.val.ok++;
+                });
+                miniChartCondInst = desenharMiniPizza('miniChartCond', stats.cond.ok, stats.cond.nc, '#FF0000');
+                miniChartManomInst = desenharMiniPizza('miniChartManom', stats.manom.ok, stats.manom.nc, '#ED7D31');
+                miniChartValInst = desenharMiniPizza('miniChartValidade', stats.val.ok, stats.val.nc, '#C00000');
+                miniChartSinalInst = desenharMiniPizza('miniChartSinal', stats.sinal.ok, stats.sinal.nc, '#F4B084');
 
-                // Manômetro (Extintores)
-                if(item.manometro === 'OK') stats.manom.ok++; else if(item.manometro === 'NC') stats.manom.nc++;
+            } else if (tipoAtual === 'HIDRANTE') {
+                grid.className = "grid grid-cols-3 gap-4";
+                grid.innerHTML = `
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho<br/>Chave</span><canvas id="miniChartEsg"></canvas></div>
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="miniChartMang"></canvas></div>
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+                `;
+                let stats = { esg: { ok: 0, nc: 0 }, mang: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.esguicho === 'OK') stats.esg.ok++; else if(item.esguicho === 'NC') stats.esg.nc++;
+                    if(item.mangueira === 'OK') stats.mang.ok++; else if(item.mangueira === 'NC') stats.mang.nc++;
+                    if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
+                });
+                dashChartInstances['filial_esg'] = desenharMiniPizza('miniChartEsg', stats.esg.ok, stats.esg.nc, '#FF0000');
+                dashChartInstances['filial_mang'] = desenharMiniPizza('miniChartMang', stats.mang.ok, stats.mang.nc, '#ED7D31');
+                dashChartInstances['filial_sinal'] = desenharMiniPizza('miniChartSinal', stats.sinal.ok, stats.sinal.nc, '#F4B084');
+
+            } else { // OUTROS (Iluminação, Alarmes, etc)
+                grid.className = "grid grid-cols-1 gap-4";
+                grid.innerHTML = `
+                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="miniChartCond"></canvas></div>
+                `;
+                let stats = { cond: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
+                });
+                dashChartInstances['filial_cond'] = desenharMiniPizza('miniChartCond', stats.cond.ok, stats.cond.nc, '#FF0000');
+            }
+        }
+
+        // =========================================================================
+        // NOVA DINÂMICA: CONTROLE DOS ACORDEÕES DO DASHBOARD (GLOBAL)
+        // =========================================================================
+        function toggleDashMiniGraficos(filial, grupo) {
+            const containerId = `dash-mini-container-${filial}-${grupo}`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                renderizarDashMiniGraficos(filial, grupo);
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function renderizarDashMiniGraficos(filial, grupo) {
+            const arrayLocal = Object.values(dadosColetados).filter(i => {
+                if (i.filial !== filial) return false;
+                if (grupo === 'EXTINTOR' && i.tipo === 'EXTINTOR') return true;
+                if (grupo === 'HIDRANTE' && i.tipo === 'HIDRANTE') return true;
+                if (grupo === 'OUTROS' && (i.tipo === 'ALARME' || i.tipo === 'DETECTOR' || i.tipo === 'ILUMINACAO')) return true;
+                return false;
             });
 
-            // Motor de Desenho Interno
-            const desenharMiniPizza = (ctxId, inst, dataOk, dataNc, colorNc) => {
-                const ctx = document.getElementById(ctxId).getContext('2d');
-                if(inst) inst.destroy(); // Limpa o canvas anterior para evitar bugs
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const prefix = `${filial}-${grupo}`;
+
+            const desenharMiniPizzaDash = (ctxId, dataOk, dataNc, colorNc) => {
+                const canvas = document.getElementById(ctxId);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
                 
-                // Se a variável é nula/sem preenchimentos (Ex: Hidrante não tem manômetro)
+                if (dashChartInstances[ctxId]) { dashChartInstances[ctxId].destroy(); }
+                
                 if(dataOk === 0 && dataNc === 0) {
-                    return new Chart(ctx, { 
-                        type: 'doughnut', 
-                        data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'], borderWidth: 0 }] }, 
-                        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: {enabled: false} } } 
-                    });
+                    dashChartInstances[ctxId] = new Chart(ctx, { type: 'doughnut', data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: {enabled: false} } } });
+                    return;
                 }
                 
-                return new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['OK', 'NC'],
-                        datasets: [{
-                            data: [dataOk, dataNc],
-                            backgroundColor: ['#00B050', colorNc], // Verde corporativo vs Cor do Defeito
-                            borderWidth: 2,
-                            borderColor: '#ffffff'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '75%',
-                        plugins: { legend: { display: false } }
-                    }
-                });
+                dashChartInstances[ctxId] = new Chart(ctx, { type: 'doughnut', data: { labels: ['OK', 'NC'], datasets: [{ data: [dataOk, dataNc], backgroundColor: ['#00B050', colorNc], borderWidth: 2, borderColor: '#ffffff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } });
             };
 
-            // Aplica as cores exatas da legenda do Excel para as não conformidades!
-            miniChartCondInst = desenharMiniPizza('miniChartCond', miniChartCondInst, stats.cond.ok, stats.cond.nc, '#FF0000'); // Vermelho
-            miniChartManomInst = desenharMiniPizza('miniChartManom', miniChartManomInst, stats.manom.ok, stats.manom.nc, '#ED7D31'); // Laranja Escuro
-            miniChartValInst = desenharMiniPizza('miniChartValidade', miniChartValInst, stats.val.ok, stats.val.nc, '#C00000'); // Vinho/Bordô
-            miniChartSinalInst = desenharMiniPizza('miniChartSinal', miniChartSinalInst, stats.sinal.ok, stats.sinal.nc, '#F4B084'); // Laranja Claro
+            // Pintura Exclusiva do DASHBOARD dependendo da caixa roxa clicada
+            if (grupo === 'EXTINTOR') {
+                let stats = { cond: { ok: 0, nc: 0 }, manom: { ok: 0, nc: 0 }, val: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
+                    if(item.manometro === 'OK') stats.manom.ok++; else if(item.manometro === 'NC') stats.manom.nc++;
+                    if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
+                    let isExpired = false;
+                    if (item.manutencao && item.manutencao.includes('/')) {
+                        const p = item.manutencao.split('/');
+                        if (p.length === 3 && new Date(p[2], p[1] - 1, p[0]) < hoje) isExpired = true;
+                    }
+                    if (isExpired) stats.val.nc++; else if (item.manutencao && item.manutencao.trim() !== "") stats.val.ok++;
+                });
+                desenharMiniPizzaDash(`dashChartCond-${prefix}`, stats.cond.ok, stats.cond.nc, '#FF0000'); 
+                desenharMiniPizzaDash(`dashChartManom-${prefix}`, stats.manom.ok, stats.manom.nc, '#ED7D31'); 
+                desenharMiniPizzaDash(`dashChartVal-${prefix}`, stats.val.ok, stats.val.nc, '#C00000'); 
+                desenharMiniPizzaDash(`dashChartSinal-${prefix}`, stats.sinal.ok, stats.sinal.nc, '#F4B084');
+
+            } else if (grupo === 'HIDRANTE') {
+                let stats = { esg: { ok: 0, nc: 0 }, mang: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.esguicho === 'OK') stats.esg.ok++; else if(item.esguicho === 'NC') stats.esg.nc++;
+                    if(item.mangueira === 'OK') stats.mang.ok++; else if(item.mangueira === 'NC') stats.mang.nc++;
+                    if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
+                });
+                desenharMiniPizzaDash(`dashChartEsg-${prefix}`, stats.esg.ok, stats.esg.nc, '#FF0000'); 
+                desenharMiniPizzaDash(`dashChartMang-${prefix}`, stats.mang.ok, stats.mang.nc, '#ED7D31'); 
+                desenharMiniPizzaDash(`dashChartSinal-${prefix}`, stats.sinal.ok, stats.sinal.nc, '#F4B084');
+
+            } else { // OUTROS
+                let stats = { cond: { ok: 0, nc: 0 } };
+                arrayLocal.forEach(item => {
+                    if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
+                });
+                desenharMiniPizzaDash(`dashChartCond-${prefix}`, stats.cond.ok, stats.cond.nc, '#FF0000');
+            }
         }
 
         function renderizarGrid() {
@@ -592,7 +665,7 @@
                 document.getElementById('view-dashboard').classList.add('hidden');
                 renderizarMenuTipos();
                 renderizarGrid();
-                renderizarMiniGraficos(); // Atualiza os mini-gráficos caso o painel esteja aberto
+                renderizarMiniGraficos(); 
             }
         }
 
@@ -600,7 +673,7 @@
             tipoAtual = novoTipo;
             renderizarMenuTipos();
             renderizarGrid();
-            renderizarMiniGraficos(); // Atualiza os mini-gráficos caso o painel esteja aberto
+            renderizarMiniGraficos(); 
         }
 
         function adicionarIDCustomizado() {
@@ -615,7 +688,6 @@
                 if (!inventarioGrid[chaveGrid].includes(limpo)) {
                     inventarioGrid[chaveGrid].push(limpo);
                     
-                    // NOVO: Reordena globalmente antes de renderizar
                     reordenarBaseDeDados(); 
                     renderizarGrid();
                 }
@@ -664,7 +736,6 @@
             const hojeDataISO = new Date().toISOString().split('T')[0];
             const vistoriaISO = formatarDataParaInput(dadosSalvos.vistoria, dadosSalvos.vistoria_raw, hojeDataISO);
 
-            // NOVO: Campo de Localização inserido para TODOS os equipamentos (Fora dos IFs)
             form.innerHTML += `
                 <div>
                     <p class="text-sm font-bold text-gray-700 mb-2">Localização / Setor</p>
@@ -686,7 +757,6 @@
                     </div>
                 `;
                 
-                // NOVO: Campo de Capacidade inserido APENAS para os Extintores
                 form.innerHTML += `
                     <div>
                         <p class="text-sm font-bold text-gray-700 mb-2">Capacidade / Peso</p>
@@ -706,6 +776,11 @@
             else if (tipoAtual === "HIDRANTE") {
                 form.innerHTML += criarGrupoBotoes('Esguicho/Chave', 'esguicho', dadosSalvos.esguicho);
                 form.innerHTML += criarGrupoBotoes('Mangueira', 'mangueira', dadosSalvos.mangueira);
+                
+                // NOVO: Campo de Próximo Teste Hidrostático (Mangueira) inserido para Hidrantes
+                const testeMangueiraISO = formatarDataParaInput(dadosSalvos.teste_mangueira, dadosSalvos.teste_mangueira_raw, '');
+                form.innerHTML += criarCampoData('Próximo Teste Hidro.', 'teste_mangueira', testeMangueiraISO);
+
                 form.innerHTML += criarGrupoBotoes('Sinalização', 'sinalizacao', dadosSalvos.sinalizacao);
                 form.innerHTML += criarCampoData('Data Vistoria', 'vistoria', vistoriaISO);
             }
@@ -778,7 +853,6 @@
                 id: idEquipamentoAtivo
             };
 
-            // NOVO: Captura da Localização para TODOS os equipamentos
             const elLocalizacao = document.getElementById('input-localizacao');
             obj.localizacao = elLocalizacao ? elLocalizacao.value.trim().toUpperCase() : "";
 
@@ -786,7 +860,6 @@
                 obj.codigo = document.getElementById('input-codigo').value.trim();
                 obj.tipo_extintor = document.getElementById('input-tipo-extintor').value.trim().toUpperCase(); 
                 
-                // NOVO: Captura da Capacidade exclusiva para Extintores
                 const elCapacidade = document.getElementById('input-capacidade');
                 obj.capacidade = elCapacidade ? elCapacidade.value.trim().toUpperCase() : "";
                 
@@ -805,17 +878,29 @@
                 }
             } 
             else if (tipoAtual === "HIDRANTE") {
-                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
+                obj.capacidade = ""; 
                 obj.esguicho = document.getElementById('input-esguicho').value;
                 obj.mangueira = document.getElementById('input-mangueira').value;
+                
+                // NOVO: Captura da data do Próximo Teste Hidrostático da Mangueira
+                const inputTeste = document.getElementById('input-teste_mangueira');
+                if (inputTeste && inputTeste.value) {
+                    const dataRaw = inputTeste.value;
+                    const partes = dataRaw.split('-');
+                    obj.teste_mangueira = `${partes[2]}/${partes[1]}/${partes[0]}`; 
+                    obj.teste_mangueira_raw = dataRaw;
+                } else {
+                    obj.teste_mangueira = "";
+                }
+
                 obj.sinalizacao = document.getElementById('input-sinalizacao').value;
             }
             else if (tipoAtual === "ILUMINACAO") {
-                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
+                obj.capacidade = ""; 
                 obj.condicao = document.getElementById('input-condicao').value;
             }
             else if (tipoAtual === "ALARME" || tipoAtual === "DETECTOR") {
-                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
+                obj.capacidade = ""; 
                 obj.condicao = document.getElementById('input-condicao').value;
             }
 
@@ -836,13 +921,19 @@
             const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
             dadosColetados[chave] = obj;
 
-            // Garante a ordenação perfeita de TUDO no sistema antes de fechar o pop-up
             reordenarBaseDeDados();
 
             fecharModal('modal-vistoria');
             renderizarGrid(); 
             atualizarDashboard(); 
-            renderizarMiniGraficos(); // Sincroniza o acordeão instantaneamente após editar o checklist
+            renderizarMiniGraficos(); 
+            
+            if (filialAtual !== 'DASHBOARD') {
+                const painelDash = document.getElementById(`dash-mini-container-${filialAtual}-${tipoAtual === 'EXTINTOR' || tipoAtual === 'HIDRANTE' ? tipoAtual : 'OUTROS'}`);
+                if (painelDash && !painelDash.classList.contains('hidden')) {
+                    renderizarDashMiniGraficos(filialAtual, tipoAtual === 'EXTINTOR' || tipoAtual === 'HIDRANTE' ? tipoAtual : 'OUTROS');
+                }
+            }
         }
 
         // -----------------------------------------
@@ -889,6 +980,7 @@
                             item.codigo = item.codigo === null || item.codigo === undefined ? "" : String(item.codigo).trim();
                             item.tipo_extintor = item.tipo_extintor === null || item.tipo_extintor === undefined ? "" : String(item.tipo_extintor).trim().toUpperCase();
                             item.manutencao = item.manutencao || "";
+                            item.teste_mangueira = item.teste_mangueira || ""; // NOVO: Mapeamento do Teste da Mangueira
                             
                             const chave = `${filial}_${tipo}_${id}`;
                             dadosColetados[chave] = item;
@@ -902,7 +994,6 @@
                         }
                     });
 
-                    // NOVO: Reordenação Global Inteligente acionada aqui
                     reordenarBaseDeDados();
                     
                     renderizarGrid();
@@ -912,7 +1003,7 @@
                     event.target.value = '';
                     
                     atualizarDashboard(); 
-                    renderizarMiniGraficos(); // Atualiza os mini-gráficos se estiverem abertos após o import
+                    renderizarMiniGraficos(); 
 
                 } catch (error) {
                     alert("Erro ao ler o arquivo JSON. Certifique-se que o formato não está quebrado.");
@@ -922,7 +1013,7 @@
         }
 
         // =========================================================================
-        // 6. MOTOR DO DASHBOARD (VISÃO GERENCIAL E FUTURO INTEGRADOR WEB)
+        // 6. MOTOR DO DASHBOARD (VISÃO GERENCIAL)
         // =========================================================================
         function atualizarDashboard() {
             const container = document.getElementById('dashboard-content');
@@ -1001,28 +1092,61 @@
                             <span>${f.replace('_', ' ')}</span>
                             <span class="text-xs text-gray-300 font-normal">Sistemas Ativos</span>
                         </div>
-                        <div class="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
-                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🧯 Extintores</div>
+                        <div class="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm items-start">
+                            
+                            <!-- EXTINTORES -->
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'EXTINTOR')">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🧯 Extintores</div>
+                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
+                                </div>
                                 <div class="flex justify-between items-center px-1">
                                     <span class="text-green-600 font-black">${stats.EXTINTOR.ok} <span class="text-[10px] font-normal">OK</span></span>
                                     <span class="${stats.EXTINTOR.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.EXTINTOR.nc} <span class="text-[10px] font-normal">NC</span></span>
                                 </div>
+                                <!-- NOVO GRID DINÂMICO PARA EXTINTOR NO DASHBOARD -->
+                                <div id="dash-mini-container-${f}-EXTINTOR" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="dashChartCond-${f}-EXTINTOR"></canvas></div>
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="dashChartManom-${f}-EXTINTOR"></canvas></div>
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="dashChartVal-${f}-EXTINTOR"></canvas></div>
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-EXTINTOR"></canvas></div>
+                                </div>
                             </div>
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
-                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🚒 Abrigos / Hidrantes</div>
+
+                            <!-- HIDRANTES -->
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'HIDRANTE')">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚒 Abrigos / Hidrantes</div>
+                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
+                                </div>
                                 <div class="flex justify-between items-center px-1">
                                     <span class="text-green-600 font-black">${stats.HIDRANTE.ok} <span class="text-[10px] font-normal">OK</span></span>
                                     <span class="${stats.HIDRANTE.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.HIDRANTE.nc} <span class="text-[10px] font-normal">NC</span></span>
                                 </div>
+                                <!-- NOVO GRID DINÂMICO PARA HIDRANTES NO DASHBOARD -->
+                                <div id="dash-mini-container-${f}-HIDRANTE" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-3 gap-2">
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho/Chave</span><canvas id="dashChartEsg-${f}-HIDRANTE"></canvas></div>
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="dashChartMang-${f}-HIDRANTE"></canvas></div>
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-HIDRANTE"></canvas></div>
+                                </div>
                             </div>
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-center">
-                                <div class="font-bold text-gray-500 mb-1 text-xs uppercase tracking-wider">🚨 Alarmes e Ilum.</div>
+
+                            <!-- OUTROS (ALARMES/ILUMINACAO) -->
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'OUTROS')">
+                                <div class="flex justify-between items-center mb-1">
+                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚨 Alarmes e Ilum.</div>
+                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
+                                </div>
                                 <div class="flex justify-between items-center px-1">
                                     <span class="text-green-600 font-black">${stats.OUTROS.ok} <span class="text-[10px] font-normal">OK</span></span>
                                     <span class="${stats.OUTROS.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.OUTROS.nc} <span class="text-[10px] font-normal">NC</span></span>
                                 </div>
+                                <!-- NOVO GRID DINÂMICO PARA OUTROS NO DASHBOARD -->
+                                <div id="dash-mini-container-${f}-OUTROS" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 gap-2">
+                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="dashChartCond-${f}-OUTROS"></canvas></div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
                 `;
@@ -1185,7 +1309,6 @@
         }
 
         function exportarJSON(metodo) {
-            // NOVO: Assegura de uma vez por todas que o arquivo sai hierarquizado (Filial>Tipo>ID) antes do loop
             reordenarBaseDeDados();
 
             const arrayFinal = Object.values(dadosColetados);
