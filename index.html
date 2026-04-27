@@ -93,13 +93,31 @@
     <!-- VIEW: COLETA / GRID Estilo "Assentos de Cinema" (Adicionado ID view-coleta) -->
     <!-- ========================================================================= -->
     <main id="view-coleta" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        
+        <!-- NOVO: BOTÃO TOGGLE DOS MINI-GRÁFICOS -->
         <div class="flex justify-between items-end mb-4">
-            <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
-            <button onclick="adicionarIDCustomizado()" class="text-alblue text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+            <div>
+                <h2 id="titulo-grid" class="text-sm font-bold text-gray-600 uppercase tracking-wider">Selecione o Equipamento</h2>
+                <button onclick="toggleMiniGraficos()" class="mt-2 text-xs font-bold text-gray-500 hover:text-alblue flex items-center gap-1 transition bg-white px-2 py-1 rounded shadow-sm border border-gray-200">
+                    📊 <span id="text-toggle-graficos">Ver Gráficos da Filial</span>
+                </button>
+            </div>
+            <button onclick="adicionarIDCustomizado()" class="text-alblue text-sm font-bold flex items-center gap-1 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 shadow-sm">
                 + Novo ID
             </button>
         </div>
         
+        <!-- NOVO: PAINEL EXPANSÍVEL (ACORDEÃO) DOS MINI-GRÁFICOS -->
+        <div id="mini-dashboard-filial" class="hidden mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200 transition-all">
+            <h3 class="text-sm font-bold text-gray-500 uppercase mb-3 text-center border-b pb-2 text-alblue">Saúde: <span id="label-mini-dash"></span></h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Condição</span><canvas id="miniChartCond"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Manômetro</span><canvas id="miniChartManom"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Validade</span><canvas id="miniChartValidade"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+            </div>
+        </div>
+
         <div id="grid-equipamentos" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
             <!-- Botões gerados via JS -->
         </div>
@@ -212,9 +230,15 @@
         let tipoAtual = tiposPadrao[0];
         let idEquipamentoAtivo = "";
 
-        // Instâncias dos Gráficos para evitar sobreposição e bugs visuais
+        // Instâncias dos Gráficos Principais
         let chartStatusInstancia = null;
         let chartTiposInstancia = null;
+
+        // NOVO: Instâncias dos Mini-Gráficos Expansíveis
+        let miniChartCondInst = null;
+        let miniChartManomInst = null;
+        let miniChartValInst = null;
+        let miniChartSinalInst = null;
 
         // Banco de Dados Local da Coleta
         let dadosColetados = {};
@@ -428,6 +452,106 @@
             });
         }
 
+        // NOVO: CONTROLE DO ACORDEÃO E RENDERIZAÇÃO DOS MINI GRÁFICOS
+        function toggleMiniGraficos() {
+            const painel = document.getElementById('mini-dashboard-filial');
+            const texto = document.getElementById('text-toggle-graficos');
+            if (painel.classList.contains('hidden')) {
+                painel.classList.remove('hidden');
+                texto.innerText = "Ocultar Gráficos";
+                renderizarMiniGraficos();
+            } else {
+                painel.classList.add('hidden');
+                texto.innerText = "Ver Gráficos da Filial";
+            }
+        }
+
+        function renderizarMiniGraficos() {
+            // Só executa a matemática gráfica se o painel estiver aberto na tela
+            if(document.getElementById('mini-dashboard-filial').classList.contains('hidden')) return;
+
+            document.getElementById('label-mini-dash').innerText = `${filialAtual.replace('_', ' ')} - ${tipoAtual}`;
+
+            // Filtro Local: Pega dados apenas desta Filial e deste Tipo específico
+            const arrayLocal = Object.values(dadosColetados).filter(i => i.filial === filialAtual && i.tipo === tipoAtual);
+
+            let stats = {
+                cond: { ok: 0, nc: 0 },
+                manom: { ok: 0, nc: 0 },
+                val: { ok: 0, nc: 0 },
+                sinal: { ok: 0, nc: 0 }
+            };
+
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+
+            arrayLocal.forEach(item => {
+                // Condição Geral (Todos)
+                if(item.condicao === 'OK') stats.cond.ok++; else if (item.condicao === 'NC') stats.cond.nc++;
+                
+                // Sinalização (Extintores e Hidrantes)
+                if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
+
+                // Validade (Extintores)
+                let isExpired = false;
+                if (item.manutencao && item.manutencao.includes('/')) {
+                    const p = item.manutencao.split('/');
+                    if (p.length === 3) {
+                        const dataM = new Date(p[2], p[1] - 1, p[0]);
+                        if (dataM < hoje) isExpired = true;
+                    }
+                }
+                if (isExpired) {
+                    stats.val.nc++; 
+                } else if (item.manutencao && item.manutencao.trim() !== "") {
+                    stats.val.ok++; // Só soma OK se houver uma data de manutenção registrada
+                }
+
+                // Manômetro (Extintores)
+                if(item.manometro === 'OK') stats.manom.ok++; else if(item.manometro === 'NC') stats.manom.nc++;
+            });
+
+            // Motor de Desenho Interno
+            const desenharMiniPizza = (ctxId, inst, dataOk, dataNc, colorNc) => {
+                const ctx = document.getElementById(ctxId).getContext('2d');
+                if(inst) inst.destroy(); // Limpa o canvas anterior para evitar bugs
+                
+                // Se a variável é nula/sem preenchimentos (Ex: Hidrante não tem manômetro)
+                if(dataOk === 0 && dataNc === 0) {
+                    return new Chart(ctx, { 
+                        type: 'doughnut', 
+                        data: { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'], borderWidth: 0 }] }, 
+                        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: {enabled: false} } } 
+                    });
+                }
+                
+                return new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['OK', 'NC'],
+                        datasets: [{
+                            data: [dataOk, dataNc],
+                            backgroundColor: ['#00B050', colorNc], // Verde corporativo vs Cor do Defeito
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            };
+
+            // Aplica as cores exatas da legenda do Excel para as não conformidades!
+            miniChartCondInst = desenharMiniPizza('miniChartCond', miniChartCondInst, stats.cond.ok, stats.cond.nc, '#FF0000'); // Vermelho
+            miniChartManomInst = desenharMiniPizza('miniChartManom', miniChartManomInst, stats.manom.ok, stats.manom.nc, '#ED7D31'); // Laranja Escuro
+            miniChartValInst = desenharMiniPizza('miniChartValidade', miniChartValInst, stats.val.ok, stats.val.nc, '#C00000'); // Vinho/Bordô
+            miniChartSinalInst = desenharMiniPizza('miniChartSinal', miniChartSinalInst, stats.sinal.ok, stats.sinal.nc, '#F4B084'); // Laranja Claro
+        }
+
         function renderizarGrid() {
             const grid = document.getElementById('grid-equipamentos');
             grid.innerHTML = '';
@@ -468,6 +592,7 @@
                 document.getElementById('view-dashboard').classList.add('hidden');
                 renderizarMenuTipos();
                 renderizarGrid();
+                renderizarMiniGraficos(); // Atualiza os mini-gráficos caso o painel esteja aberto
             }
         }
 
@@ -475,6 +600,7 @@
             tipoAtual = novoTipo;
             renderizarMenuTipos();
             renderizarGrid();
+            renderizarMiniGraficos(); // Atualiza os mini-gráficos caso o painel esteja aberto
         }
 
         function adicionarIDCustomizado() {
@@ -538,6 +664,14 @@
             const hojeDataISO = new Date().toISOString().split('T')[0];
             const vistoriaISO = formatarDataParaInput(dadosSalvos.vistoria, dadosSalvos.vistoria_raw, hojeDataISO);
 
+            // NOVO: Campo de Localização inserido para TODOS os equipamentos (Fora dos IFs)
+            form.innerHTML += `
+                <div>
+                    <p class="text-sm font-bold text-gray-700 mb-2">Localização / Setor</p>
+                    <input type="text" id="input-localizacao" value="${dadosSalvos.localizacao || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue placeholder-gray-400 uppercase" placeholder="Ex: CABINE DE PINTURA">
+                </div>
+            `;
+
             if (tipoAtual === "EXTINTOR") {
                 form.innerHTML += `
                     <div>
@@ -549,6 +683,14 @@
                     <div>
                         <p class="text-sm font-bold text-gray-700 mb-2">Tipo do Extintor</p>
                         <input type="text" id="input-tipo-extintor" value="${dadosSalvos.tipo_extintor || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue uppercase placeholder-gray-400" placeholder="Ex: PQS, AP, CO2">
+                    </div>
+                `;
+                
+                // NOVO: Campo de Capacidade inserido APENAS para os Extintores
+                form.innerHTML += `
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Capacidade / Peso</p>
+                        <input type="text" id="input-capacidade" value="${dadosSalvos.capacidade || ''}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold text-gray-700 outline-none focus:border-alblue uppercase placeholder-gray-400" placeholder="Ex: 10 L, 04 KG">
                     </div>
                 `;
 
@@ -577,7 +719,7 @@
                 const valVistoria = dadosSalvos.vistoria || "PORTARIA";
                 form.innerHTML += `
                     <div>
-                        <p class="text-sm font-bold text-gray-700 mb-2">Local/Data Vistoria</p>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Local/Data Vistoria (Opcional)</p>
                         <input type="text" id="input-vistoria" value="${valVistoria}" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-lg font-bold outline-none focus:border-alblue">
                     </div>
                 `;
@@ -636,9 +778,17 @@
                 id: idEquipamentoAtivo
             };
 
+            // NOVO: Captura da Localização para TODOS os equipamentos
+            const elLocalizacao = document.getElementById('input-localizacao');
+            obj.localizacao = elLocalizacao ? elLocalizacao.value.trim().toUpperCase() : "";
+
             if (tipoAtual === "EXTINTOR") {
                 obj.codigo = document.getElementById('input-codigo').value.trim();
                 obj.tipo_extintor = document.getElementById('input-tipo-extintor').value.trim().toUpperCase(); 
+                
+                // NOVO: Captura da Capacidade exclusiva para Extintores
+                const elCapacidade = document.getElementById('input-capacidade');
+                obj.capacidade = elCapacidade ? elCapacidade.value.trim().toUpperCase() : "";
                 
                 obj.condicao = document.getElementById('input-condicao').value;
                 obj.manometro = document.getElementById('input-manometro').value;
@@ -655,19 +805,22 @@
                 }
             } 
             else if (tipoAtual === "HIDRANTE") {
+                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
                 obj.esguicho = document.getElementById('input-esguicho').value;
                 obj.mangueira = document.getElementById('input-mangueira').value;
                 obj.sinalizacao = document.getElementById('input-sinalizacao').value;
             }
             else if (tipoAtual === "ILUMINACAO") {
+                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
                 obj.condicao = document.getElementById('input-condicao').value;
             }
             else if (tipoAtual === "ALARME" || tipoAtual === "DETECTOR") {
+                obj.capacidade = ""; // Garante JSON limpo sem campo fantasma
                 obj.condicao = document.getElementById('input-condicao').value;
             }
 
             const inputVist = document.getElementById('input-vistoria');
-            if (inputVist.type === "date") {
+            if (inputVist && inputVist.type === "date") {
                 const dataRaw = inputVist.value; 
                 if(dataRaw) {
                     const partes = dataRaw.split('-');
@@ -676,19 +829,20 @@
                 } else {
                     obj.vistoria = "";
                 }
-            } else {
+            } else if (inputVist) {
                 obj.vistoria = inputVist.value.trim();
             }
 
             const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
             dadosColetados[chave] = obj;
 
-            // NOVO: Garante a ordenação perfeita de TUDO no sistema antes de fechar o pop-up
+            // Garante a ordenação perfeita de TUDO no sistema antes de fechar o pop-up
             reordenarBaseDeDados();
 
             fecharModal('modal-vistoria');
             renderizarGrid(); 
             atualizarDashboard(); 
+            renderizarMiniGraficos(); // Sincroniza o acordeão instantaneamente após editar o checklist
         }
 
         // -----------------------------------------
@@ -758,6 +912,7 @@
                     event.target.value = '';
                     
                     atualizarDashboard(); 
+                    renderizarMiniGraficos(); // Atualiza os mini-gráficos se estiverem abertos após o import
 
                 } catch (error) {
                     alert("Erro ao ler o arquivo JSON. Certifique-se que o formato não está quebrado.");
