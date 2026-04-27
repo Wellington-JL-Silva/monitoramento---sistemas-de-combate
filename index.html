@@ -207,7 +207,7 @@
             });
         });
 
-        // Estado Atual do App (ALTERADO para iniciar no Dashboard)
+        // Estado Atual do App
         let filialAtual = 'DASHBOARD';
         let tipoAtual = tiposPadrao[0];
         let idEquipamentoAtivo = "";
@@ -216,9 +216,41 @@
         let chartStatusInstancia = null;
         let chartTiposInstancia = null;
 
-        // Banco de Dados Local da Coleta (Aqui salvamos as vistorias)
-        // Formato chave: "FILIAL_TIPO_ID" -> Valor: Objeto JSON
+        // Banco de Dados Local da Coleta
         let dadosColetados = {};
+
+        // -----------------------------------------
+        // NOVO: ORDENAÇÃO GLOBAL (MASTER DATA E VISUAL)
+        // -----------------------------------------
+        function reordenarBaseDeDados() {
+            // 1. Extrai para um Array e ordena os dados coletados de forma hierárquica
+            const arrayDados = Object.values(dadosColetados);
+            
+            arrayDados.sort((a, b) => {
+                // Regra 1: Ordenar por Filial
+                const filialCmp = (a.filial || "").localeCompare(b.filial || "");
+                if (filialCmp !== 0) return filialCmp;
+                
+                // Regra 2: Ordenar por Tipo (Extintor, Hidrante, etc)
+                const tipoCmp = (a.tipo || "").localeCompare(b.tipo || "");
+                if (tipoCmp !== 0) return tipoCmp;
+                
+                // Regra 3: Ordenar por ID com Inteligência Numérica Natural (E-06, E-07, E-10)
+                return (a.id || "").localeCompare((b.id || ""), undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            // Remonta o objeto "dadosColetados" garantindo a nova ordem cronológica da memória do JavaScript
+            dadosColetados = {};
+            arrayDados.forEach(item => {
+                const chave = `${item.filial}_${item.tipo}_${item.id}`;
+                dadosColetados[chave] = item;
+            });
+
+            // 2. Ordena também a memória das grades visuais na tela
+            Object.keys(inventarioGrid).forEach(key => {
+                inventarioGrid[key].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+            });
+        }
 
         // -----------------------------------------
         // 2. INICIALIZAÇÃO DA INTERFACE E INTEGRAÇÃO GITHUB (FETCH)
@@ -229,38 +261,35 @@
 
         async function inicializarApp() {
             try {
-                // 1. Busca os arquivos na API pública do seu repositório no GitHub
+                // Busca os arquivos na API pública do GitHub
                 const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
                 const responseCat = await fetch(repoApiUrl);
                 
                 if (!responseCat.ok) throw new Error('Falha ao acessar o repositório no GitHub');
                 const files = await responseCat.json();
                 
-                // 2. Filtra apenas JSON e extrai a data via Regex de forma inteligente
+                // Filtra JSON e extrai data
                 const jsonFiles = files
                     .filter(f => f.name.endsWith('.json'))
                     .map(f => {
-                        // Regex procura exatamente o padrão YYYY-MM-DD
                         const match = f.name.match(/(\d{4}-\d{2}-\d{2})/);
-                        const dataISO = match ? match[1] : '1900-01-01'; // Fallback se não tiver data no nome
+                        const dataISO = match ? match[1] : '1900-01-01';
                         const origem = f.name.toLowerCase().includes('inventario') ? 'Excel' : 'App Mobile';
-                        
                         return { ...f, dataISO, origem };
                     });
 
-                // 3. Ordena de forma decrescente (Do mais novo para o mais velho)
+                // Ordena do mais recente
                 jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
 
-                // 4. Preenche o Select de Histórico no Cabeçalho
+                // Preenche Histórico
                 const selectHist = document.getElementById('select-historico');
                 
                 if (jsonFiles.length > 0) {
                     selectHist.innerHTML = '';
                     jsonFiles.forEach((arq, index) => {
                         const opt = document.createElement('option');
-                        opt.value = arq.download_url; // Salva o link direto (RAW) do arquivo
+                        opt.value = arq.download_url;
                         
-                        // Formata a data de YYYY-MM-DD para DD/MM/YYYY para exibição elegante
                         let dataBR = arq.dataISO;
                         if (arq.dataISO !== '1900-01-01') {
                             const partes = arq.dataISO.split('-');
@@ -268,14 +297,12 @@
                         }
                         
                         opt.textContent = `${dataBR} - Origem: ${arq.origem}`;
-                        if (index === 0) opt.selected = true; // Deixa o mais recente já selecionado
+                        if (index === 0) opt.selected = true;
                         
                         selectHist.appendChild(opt);
                     });
                     
                     selectHist.classList.remove('hidden');
-                    
-                    // 5. Faz o fetch final para carregar e exibir os dados do arquivo mais recente
                     await carregarDados(jsonFiles[0].download_url);
                 } else {
                     throw new Error('Nenhum arquivo JSON encontrado no repositório.');
@@ -292,12 +319,9 @@
             if (!urlArquivo) return;
             try {
                 await carregarDados(urlArquivo);
-                
-                // Pega o texto amigável do select (Data e Origem) para mostrar no aviso
                 const select = document.getElementById('select-historico');
                 const textoAmigavel = select.options[select.selectedIndex].text;
                 mostrarToast("Histórico carregado: " + textoAmigavel);
-                
             } catch (error) {
                 alert("Erro ao carregar o arquivo de histórico selecionado.");
                 iniciarInterfaceVazia();
@@ -310,15 +334,9 @@
             
             const jsonLido = await responseData.json();
             
-            // Reseta a base de dados e a grade para o estado zero, evitando mistura de dados temporais
             dadosColetados = {};
-            filiais.forEach(f => {
-                Object.keys(inventarioBase).forEach(t => {
-                    inventarioGrid[`${f}_${t}`] = [...inventarioBase[t]];
-                });
-            });
+            inventarioGrid = {};
             
-            // Injeta o arquivo do GitHub na memória e ajusta a grade
             jsonLido.forEach(item => {
                 const filial = (item.filial || "").trim();
                 const tipo = (item.tipo || "").trim();
@@ -336,20 +354,19 @@
                     dadosColetados[chave] = item;
 
                     const chaveGrid = `${filial}_${tipo}`;
-                    if (inventarioGrid[chaveGrid]) {
-                        if (!inventarioGrid[chaveGrid].includes(id)) {
-                            inventarioGrid[chaveGrid].push(id);
-                        }
-                        inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                    if (!inventarioGrid[chaveGrid]) inventarioGrid[chaveGrid] = [];
+                    if (!inventarioGrid[chaveGrid].includes(id)) {
+                        inventarioGrid[chaveGrid].push(id);
                     }
                 }
             });
 
-            iniciarInterfaceVazia(); // Executa o setup visual agora que os dados estão carregados
+            // NOVO: Aplica a Ordem Global Mestra antes de desenhar
+            reordenarBaseDeDados();
+            iniciarInterfaceVazia(); 
         }
 
         function iniciarInterfaceVazia() {
-            // Entra na tela principal e atualiza o Dashboard com o que estiver na memória
             mudarFilial('DASHBOARD');
         }
 
@@ -357,7 +374,6 @@
             const nav = document.getElementById('nav-filiais');
             nav.innerHTML = '';
             
-            // NOVO: Adiciona a aba fixa de DASHBOARD no início
             const isDashActive = 'DASHBOARD' === filialAtual;
             nav.innerHTML += `
                 <li class="snap-center shrink-0">
@@ -374,7 +390,6 @@
                 const li = document.createElement('li');
                 li.className = "snap-center shrink-0";
                 
-                // Formata o nome bonitinho (ex: MATRIZ_ALUMINIO -> Matriz Alumínio)
                 let nomeFormatado = filial.replace("_", " ");
                 
                 li.innerHTML = `
@@ -392,10 +407,8 @@
             const nav = document.getElementById('nav-tipos');
             nav.innerHTML = '';
             
-            // Central de Alarmes tem botões diferentes
             const tiposRender = (filialAtual === "CENTRAL_ALARMES") ? tiposAlarme : tiposPadrao;
             
-            // Se a filial mudou e o tipo atual não pertence a ela, reseta o tipo
             if (!tiposRender.includes(tipoAtual)) {
                 tipoAtual = tiposRender[0];
             }
@@ -426,7 +439,6 @@
                 const chaveUnica = `${filialAtual}_${tipoAtual}_${id}`;
                 const jaVistoriado = dadosColetados[chaveUnica] !== undefined;
                 
-                // Cores do grid: Verde se foi vistoriado, Cinza se não foi.
                 const bgClass = jaVistoriado ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-600 shadow-sm';
                 const checkIcon = jaVistoriado ? `<div class="absolute top-1 right-1 text-green-600"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>` : '';
 
@@ -445,12 +457,11 @@
             filialAtual = novaFilial;
             renderizarMenuFiliais();
             
-            // NOVO: Lógica para alternar entre a visão de Dashboard e a visão de Coleta
             if (novaFilial === 'DASHBOARD') {
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
                 document.getElementById('view-dashboard').classList.remove('hidden');
-                atualizarDashboard(); // Alimenta o painel
+                atualizarDashboard(); 
             } else {
                 document.getElementById('container-nav-tipos').classList.remove('hidden');
                 document.getElementById('view-coleta').classList.remove('hidden');
@@ -472,9 +483,14 @@
             if (novoID && novoID.trim() !== "") {
                 const limpo = novoID.trim().toUpperCase();
                 const chaveGrid = `${filialAtual}_${tipoAtual}`;
+                
+                if (!inventarioGrid[chaveGrid]) inventarioGrid[chaveGrid] = [];
+
                 if (!inventarioGrid[chaveGrid].includes(limpo)) {
                     inventarioGrid[chaveGrid].push(limpo);
-                    inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                    
+                    // NOVO: Reordena globalmente antes de renderizar
+                    reordenarBaseDeDados(); 
                     renderizarGrid();
                 }
                 abrirChecklist(limpo);
@@ -496,14 +512,13 @@
             }
         }
 
-        // Função ponte para ler datas que vêm do Excel e exibir no calendário do HTML (YYYY-MM-DD)
         function formatarDataParaInput(dataBR, dataRaw, dataFallback) {
-            if (dataRaw) return dataRaw; // Se foi coletado no próprio celular agora
-            if (dataBR && dataBR.includes('/')) { // Se veio importado do Excel (DD/MM/YYYY)
+            if (dataRaw) return dataRaw; 
+            if (dataBR && dataBR.includes('/')) { 
                 const partes = dataBR.split('/');
                 if (partes.length === 3) return `${partes[2]}-${partes[1]}-${partes[0]}`;
             }
-            return dataFallback; // Se estiver em branco
+            return dataFallback; 
         }
 
         // -----------------------------------------
@@ -518,14 +533,12 @@
             const dadosSalvos = dadosColetados[chave] || {}; 
 
             const form = document.getElementById('form-checklist');
-            form.innerHTML = ''; // Limpa formulário antigo
+            form.innerHTML = ''; 
 
             const hojeDataISO = new Date().toISOString().split('T')[0];
             const vistoriaISO = formatarDataParaInput(dadosSalvos.vistoria, dadosSalvos.vistoria_raw, hojeDataISO);
 
-            // Injeta campos baseados no TIPO de equipamento
             if (tipoAtual === "EXTINTOR") {
-                // NOVOS CAMPOS: Código e Tipo do Extintor (Com valor vazio garantido caso não tenha código)
                 form.innerHTML += `
                     <div>
                         <p class="text-sm font-bold text-gray-700 mb-2">Código do Extintor (Opcional)</p>
@@ -543,7 +556,6 @@
                 form.innerHTML += criarGrupoBotoes('Manômetro/Peso', 'manometro', dadosSalvos.manometro);
                 form.innerHTML += criarGrupoBotoes('Sinalização', 'sinalizacao', dadosSalvos.sinalizacao);
 
-                // CAMPO: Data de Manutenção
                 const manutencaoISO = formatarDataParaInput(dadosSalvos.manutencao, dadosSalvos.manutencao_raw, '');
                 form.innerHTML += criarCampoData('Próxima Manutenção / Validade', 'manutencao', manutencaoISO);
 
@@ -575,7 +587,6 @@
             document.getElementById('modal-vistoria').classList.add('flex');
         }
 
-        // Templates de componentes para o Modal
         function criarGrupoBotoes(label, idCampo, valorSalvo) {
             const isOK = valorSalvo === 'OK';
             const isNC = valorSalvo === 'NC';
@@ -618,7 +629,6 @@
             hiddenInput.value = valor;
         }
 
-        // SALVA OS DADOS NO OBJETO GLOBAL E FECHA MODAL
         function salvarVistoria() {
             const obj = {
                 filial: filialAtual,
@@ -626,7 +636,6 @@
                 id: idEquipamentoAtivo
             };
 
-            // Captura os dados baseado no tipo e aplica .trim() para remover espaços acidentais
             if (tipoAtual === "EXTINTOR") {
                 obj.codigo = document.getElementById('input-codigo').value.trim();
                 obj.tipo_extintor = document.getElementById('input-tipo-extintor').value.trim().toUpperCase(); 
@@ -635,12 +644,11 @@
                 obj.manometro = document.getElementById('input-manometro').value;
                 obj.sinalizacao = document.getElementById('input-sinalizacao').value;
 
-                // Tratamento da Data de Manutenção
                 const inputManut = document.getElementById('input-manutencao');
                 if (inputManut && inputManut.value) {
                     const dataRaw = inputManut.value;
                     const partes = dataRaw.split('-');
-                    obj.manutencao = `${partes[2]}/${partes[1]}/${partes[0]}`; // Formato Excel (BR)
+                    obj.manutencao = `${partes[2]}/${partes[1]}/${partes[0]}`; 
                     obj.manutencao_raw = dataRaw;
                 } else {
                     obj.manutencao = "";
@@ -658,7 +666,6 @@
                 obj.condicao = document.getElementById('input-condicao').value;
             }
 
-            // Tratamento da Data de Vistoria
             const inputVist = document.getElementById('input-vistoria');
             if (inputVist.type === "date") {
                 const dataRaw = inputVist.value; 
@@ -673,13 +680,15 @@
                 obj.vistoria = inputVist.value.trim();
             }
 
-            // Salva no banco de dados local
             const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
             dadosColetados[chave] = obj;
 
+            // NOVO: Garante a ordenação perfeita de TUDO no sistema antes de fechar o pop-up
+            reordenarBaseDeDados();
+
             fecharModal('modal-vistoria');
             renderizarGrid(); 
-            atualizarDashboard(); // NOVO: Mantém o dashboard sempre atualizado em background
+            atualizarDashboard(); 
         }
 
         // -----------------------------------------
@@ -700,7 +709,6 @@
             m.classList.add('flex');
         }
 
-        // MOTOR CENTRAL DE IMPORTAÇÃO JSON (100% BLINDADO PARA CAMPOS VAZIOS)
         function importarJSON(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -711,15 +719,16 @@
                     const jsonLido = JSON.parse(e.target.result);
                     let importados = 0;
 
+                    dadosColetados = {};
+                    inventarioGrid = {};
+
                     jsonLido.forEach(item => {
-                        // Limpa espaços acidentais nas chaves mestras
                         const filial = (item.filial || "").trim();
                         const tipo = (item.tipo || "").trim();
                         const id = (item.id || "").trim();
 
                         if (filial && tipo && id) {
                             
-                            // Normalização Forçada: Se não tiver código, tipo_extintor ou manutenção, garanta que seja string vazia
                             item.filial = filial;
                             item.tipo = tipo;
                             item.id = id;
@@ -731,28 +740,24 @@
                             dadosColetados[chave] = item;
                             importados++;
 
-                            // Atualiza a Grade isolada da Filial_Tipo com os novos IDs lidos no JSON
                             const chaveGrid = `${filial}_${tipo}`;
-                            if (inventarioGrid[chaveGrid]) {
-                                if (!inventarioGrid[chaveGrid].includes(id)) {
-                                    inventarioGrid[chaveGrid].push(id);
-                                }
-                                // Reordena a lista perfeitamente: E-01, E-02, E-03...
-                                inventarioGrid[chaveGrid].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+                            if (!inventarioGrid[chaveGrid]) inventarioGrid[chaveGrid] = [];
+                            if (!inventarioGrid[chaveGrid].includes(id)) {
+                                inventarioGrid[chaveGrid].push(id);
                             }
                         }
                     });
 
+                    // NOVO: Reordenação Global Inteligente acionada aqui
+                    reordenarBaseDeDados();
+                    
                     renderizarGrid();
                     document.getElementById('contador-export').innerText = Object.keys(dadosColetados).length;
                     
-                    // Avisa quantos foram carregados de verdade!
-                    mostrarToast(`${importados} Itens importados com sucesso!`);
-                    
-                    // Limpa a memória do botão para permitir carregar o mesmo arquivo de novo
+                    mostrarToast(`${importados} Itens importados e grade limpa com sucesso!`);
                     event.target.value = '';
                     
-                    atualizarDashboard(); // NOVO: Atualiza o dashboard com os dados recém-importados
+                    atualizarDashboard(); 
 
                 } catch (error) {
                     alert("Erro ao ler o arquivo JSON. Certifique-se que o formato não está quebrado.");
@@ -771,17 +776,13 @@
             let globalOK = 0;
             let globalNC = 0;
 
-            // Transforma o Objeto de dados coletados em um Array plano para processamento
             const arrayDados = Object.values(dadosColetados);
-
             const hoje = new Date();
             hoje.setHours(0,0,0,0);
 
-            // 1. Calcula a Saúde Global da Fábrica (Contempla TODOS, inclusive a Central de Alarmes)
             arrayDados.forEach(item => {
                 let isNC = false;
                 if (item.tipo === 'EXTINTOR') {
-                    // Novo: O Dashboard agora reconhece extintores vencidos automaticamente como (NC)
                     let isExpired = false;
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
@@ -800,22 +801,19 @@
                 if (isNC) globalNC++; else globalOK++;
             });
 
-            // 2. Filtra as filiais (Remove a Central de Alarmes da lista de CARDS individuais)
             const filiaisCNPJ = filiais.filter(f => f !== 'CENTRAL_ALARMES');
 
-            // 3. Gera o painel apenas das filiais reais
             const htmlFiliais = filiaisCNPJ.map(f => {
                 let stats = {
                     EXTINTOR: { ok: 0, nc: 0 },
                     HIDRANTE: { ok: 0, nc: 0 },
-                    OUTROS: { ok: 0, nc: 0 } // Engloba Alarme, Detector e Iluminação
+                    OUTROS: { ok: 0, nc: 0 } 
                 };
 
                 arrayDados.forEach(item => {
                     if (item.filial === f) {
                         let isNC = false;
                         
-                        // Lógica para detectar se o equipamento possui não conformidades (NC)
                         if (item.tipo === 'EXTINTOR') {
                             let isExpired = false;
                             if (item.manutencao && item.manutencao.includes('/')) {
@@ -832,7 +830,6 @@
                             if (item.condicao === 'NC') isNC = true;
                         }
 
-                        // Agrupamento para simplificação visual
                         let grupo = (item.tipo === 'EXTINTOR' || item.tipo === 'HIDRANTE') ? item.tipo : 'OUTROS';
 
                         if (isNC) {
@@ -843,7 +840,6 @@
                     }
                 });
 
-                // Renderiza o card individual da filial estilo "Widget" Corporativo
                 return `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="bg-aldark text-white px-4 py-2 font-bold flex justify-between items-center text-sm">
@@ -877,7 +873,6 @@
                 `;
             }).join('');
 
-            // Cabeçalho de Resumo Global
             const totalGeral = globalOK + globalNC;
             const saudePer = totalGeral > 0 ? Math.round((globalOK / totalGeral) * 100) : 0;
             const corSaude = saudePer < 90 ? 'text-red-600' : 'text-green-600';
@@ -901,7 +896,7 @@
                         </div>
                         <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl">
                             <div class="text-2xl font-black text-red-700">${globalNC}</div>
-                            <div class="text-xs font-bold text-red-800 uppercase mt-1">não conformidades (NC)</div>
+                            <div class="text-xs font-bold text-red-800 uppercase mt-1">Anomalias (NC)</div>
                         </div>
                     </div>
                 </div>
@@ -909,16 +904,13 @@
 
             container.innerHTML = htmlGlobal + htmlFiliais;
 
-            // Renderiza os Gráficos de Chart.js após montar o HTML
             renderizarGraficos(arrayDados);
         }
 
         function renderizarGraficos(dados) {
-            // Conta os Status globais para o gráfico de barras
             let totalOK = 0;
             let totalNC = 0;
 
-            // Variáveis super detalhadas para a Pizza de Extintores
             let okAP = 0, okPQS = 0, okCO2 = 0, okEspuma = 0, okABC = 0, okOutros = 0;
             let ncValidade = 0, ncCondicoes = 0, ncManometro = 0, ncSinalizacao = 0;
 
@@ -929,7 +921,6 @@
                 let isNC = false;
 
                 if (item.tipo === 'EXTINTOR') {
-                    // Verifica Validade (Se a data de manutenção expirou hoje)
                     let isExpired = false;
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
@@ -939,7 +930,6 @@
                         }
                     }
 
-                    // Classificação Hierárquica (Idêntica à inteligência do Excel)
                     if (isExpired) {
                         isNC = true;
                         ncValidade++;
@@ -953,7 +943,6 @@
                         isNC = true;
                         ncSinalizacao++;
                     } else {
-                        // Equipamento Conforme! Agrupa pelo tipo.
                         let tipoExt = item.tipo_extintor ? item.tipo_extintor.toUpperCase() : '';
                         if (tipoExt.includes('AP') || tipoExt.includes('ÁGUA') || tipoExt.includes('AGUA')) okAP++;
                         else if (tipoExt.includes('PQS') || tipoExt.includes('PÓ') || tipoExt.includes('PO')) okPQS++;
@@ -971,7 +960,6 @@
                 if (isNC) totalNC++; else totalOK++;
             });
 
-            // 1. Gráfico de Status (Barra)
             const ctxStatus = document.getElementById('chartStatus').getContext('2d');
             if (chartStatusInstancia) chartStatusInstancia.destroy(); 
             
@@ -982,7 +970,7 @@
                     datasets: [{
                         label: 'Equipamentos',
                         data: [totalOK, totalNC],
-                        backgroundColor: ['#00B050', '#FF0000'], // Verde AL e Vermelho AL
+                        backgroundColor: ['#00B050', '#FF0000'], 
                         borderRadius: 5
                     }]
                 },
@@ -994,7 +982,6 @@
                 }
             });
 
-            // 2. Gráfico de Detalhamento (Doughnut/Rosca)
             const ctxTipos = document.getElementById('chartTipos').getContext('2d');
             if (chartTiposInstancia) chartTiposInstancia.destroy();
 
@@ -1002,7 +989,6 @@
             const dataPizza = [];
             const colorsPizza = [];
 
-            // Popula os arrays aplicando EXATAMENTE o padrão visual da legenda enviada
             if (okAP > 0) { labelsPizza.push('OK - Água'); dataPizza.push(okAP); colorsPizza.push('#92D050'); }
             if (okPQS > 0) { labelsPizza.push('OK - Pó (PQS)'); dataPizza.push(okPQS); colorsPizza.push('#00B050'); }
             if (okCO2 > 0) { labelsPizza.push('OK - CO2'); dataPizza.push(okCO2); colorsPizza.push('#005e20'); }
@@ -1015,7 +1001,6 @@
             if (ncManometro > 0) { labelsPizza.push('NC - Manômetro'); dataPizza.push(ncManometro); colorsPizza.push('#ED7D31'); }
             if (ncSinalizacao > 0) { labelsPizza.push('NC - Sinalização'); dataPizza.push(ncSinalizacao); colorsPizza.push('#F4B084'); }
 
-            // Fallback caso não tenha nenhum extintor preenchido
             if (dataPizza.length === 0) {
                 labelsPizza.push('Nenhum');
                 dataPizza.push(1);
@@ -1045,6 +1030,9 @@
         }
 
         function exportarJSON(metodo) {
+            // NOVO: Assegura de uma vez por todas que o arquivo sai hierarquizado (Filial>Tipo>ID) antes do loop
+            reordenarBaseDeDados();
+
             const arrayFinal = Object.values(dadosColetados);
             
             if (arrayFinal.length === 0) {
