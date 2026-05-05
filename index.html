@@ -1430,7 +1430,7 @@
         }
 
         function gerarListaComprasAutomatica() {
-            if(!confirm("O Auto-Scan vai varrer todas as Não Conformidades (vencidos, despressurizados, danificados) e adicionar os itens à lista de compras atual. Deseja continuar?")) return;
+            if(!confirm("O Auto-Scan vai varrer todas as Não Conformidades (vencidos, a vencer em 45 dias, despressurizados e danificados) e adicionar os itens à lista de compras atual. Deseja continuar?")) return;
             
             const arrayDados = Object.values(dadosColetados);
             const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1445,16 +1445,30 @@
 
             arrayDados.forEach(item => {
                 if (item.tipo === 'EXTINTOR') {
-                    let isExpired = false;
+                    let necessitaRecarga = false;
+                    
+                    // NOVO: Cálculo Preventivo (45 Dias)
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
-                        if (p.length === 3 && new Date(p[2], p[1]-1, p[0]) < hoje) isExpired = true; // Correção silenciosa aplicada
+                        if (p.length === 3) {
+                            const dataM = new Date(p[2], p[1]-1, p[0]); // Correção silenciosa mantida
+                            const diffTime = dataM - hoje;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            // Se já venceu (número negativo) ou se vence em 45 dias ou menos
+                            if (diffDays <= 45) {
+                                necessitaRecarga = true;
+                            }
+                        }
                     }
-                    if (isExpired || item.manometro === 'NC') addScan(`Recarga/Manutenção Extintor ${item.tipo_extintor || ''} ${item.capacidade || ''}`.trim(), item);
+                    
+                    if (necessitaRecarga || item.manometro === 'NC') addScan(`Recarga/Manutenção Extintor ${item.tipo_extintor || ''} ${item.capacidade || ''}`.trim(), item);
                     if (item.condicao === 'NC') addScan(`Peça de Reposição (Gatilho/Mangueira) Extintor ${item.tipo_extintor || ''}`.trim(), item);
+                    
                 } else if (item.tipo === 'HIDRANTE') {
                     if (item.mangueira === 'NC') addScan("Mangueira de Hidrante 1.5''", item);
                     if (item.esguicho === 'NC') addScan("Esguicho Regulável 1.5'' ou Chave Storz", item);
+                    
                 } else if (item.tipo === 'ILUMINACAO' || item.tipo === 'ALARME' || item.tipo === 'DETECTOR') {
                     if (item.condicao === 'NC') addScan(`Bateria ou Peça de Manutenção de ${item.tipo}`, item);
                 }
@@ -1473,7 +1487,7 @@
 
             salvarBackupLocal();
             renderizarListaCompras();
-            mostrarToast(`${novosItens.length} tipos de itens somados pelo Auto-Scan!`);
+            mostrarToast(`${novosItens.length} tipos de itens somados pelo Auto-Scan Preventivo!`);
         }
 
         function exportarComprasWhatsApp() {
