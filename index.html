@@ -274,18 +274,38 @@
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Descrição do Item</label>
                         <input list="sugestoes-compras" id="compra-nome" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha da lista...">
                         <datalist id="sugestoes-compras">
+                            <!-- COMPRA DE EXTINTORES NOVOS (CASCO) -->
+                            <option value="Extintor PQS 04 kg (NOVO)">
+                            <option value="Extintor PQS 06 kg (NOVO)">
+                            <option value="Extintor PQS 08 kg (NOVO)">
+                            <option value="Extintor PQS 12 kg (NOVO)">
+                            <option value="Extintor Água (AP) 10 L (NOVO)">
+                            <option value="Extintor CO2 06 kg (NOVO)">
+                            <option value="Extintor CO2 10 kg (NOVO)">
+                            <option value="Extintor Pó ABC 04 kg (NOVO)">
+                            
+                            <!-- SERVIÇO DE MANUTENÇÃO / RECARGA / ENSAIO -->
+                            <option value="Ensaio / Manutenção Extintor PQS 04 kg">
+                            <option value="Ensaio / Manutenção Extintor PQS 06 kg">
+                            <option value="Ensaio / Manutenção Extintor PQS 08 kg">
+                            <option value="Ensaio / Manutenção Extintor PQS 12 kg">
+                            <option value="Ensaio / Manutenção Extintor Água (AP) 10 L">
+                            <option value="Ensaio / Manutenção Extintor CO2 06 kg">
+                            <option value="Ensaio / Manutenção Extintor CO2 10 kg">
+                            <option value="Ensaio / Manutenção Extintor Pó ABC 04 kg">
+                            
+                            <!-- PEÇAS E MATERIAIS DE REPOSIÇÃO -->
                             <option value="Mangueira de Hidrante 1.5'' 15m">
                             <option value="Mangueira de Hidrante 1.5'' 30m">
                             <option value="Esguicho Regulável 1.5''">
                             <option value="Chave Storz">
                             <option value="Lacre Plástico para Extintor">
+                            <option value="Gatilho / Válvula Extintor">
                             <option value="Placa de Sinalização (Extintor)">
                             <option value="Placa de Sinalização (Hidrante)">
                             <option value="Lâmpada de Emergência">
                             <option value="Bateria para Iluminação de Emergência">
                             <option value="Vidro para Abrigo de Hidrante">
-                            <option value="Recarga de Extintor PQS">
-                            <option value="Recarga de Extintor CO2">
                         </datalist>
                     </div>
                     <div>
@@ -1430,64 +1450,91 @@
         }
 
         function gerarListaComprasAutomatica() {
-            if(!confirm("O Auto-Scan vai varrer todas as Não Conformidades (vencidos, a vencer em 45 dias, despressurizados e danificados) e adicionar os itens à lista de compras atual. Deseja continuar?")) return;
+            if(!confirm("O Auto-Scan vai varrer a Fábrica e o Estoque procurando Não Conformidades, itens vencidos ou a vencer em 45 dias. Deseja continuar?")) return;
             
             const arrayDados = Object.values(dadosColetados);
             const hoje = new Date(); hoje.setHours(0,0,0,0);
             let novosItens = [];
             
-            const addScan = (nome, origemObj) => {
+            const addScan = (nome, origemStr) => {
                 const desc = nome.toUpperCase();
                 let item = novosItens.find(i => i.nome === desc);
                 if (item) item.quantidade++;
-                else novosItens.push({ nome: desc, quantidade: 1, origem: 'Auto-Scan' });
+                else novosItens.push({ nome: desc, quantidade: 1, origem: origemStr });
             };
 
+            // 1. VARREDURA DA FÁBRICA (Campo)
             arrayDados.forEach(item => {
                 if (item.tipo === 'EXTINTOR') {
                     let necessitaRecarga = false;
-                    
-                    // NOVO: Cálculo Preventivo (45 Dias)
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
                         if (p.length === 3) {
-                            const dataM = new Date(p[2], p[1]-1, p[0]); // Correção silenciosa mantida
+                            const dataM = new Date(p[2], p[1]-1, p[0]); // Correção silenciosa mantida (Padrão Brasileiro DD/MM/YYYY)
                             const diffTime = dataM - hoje;
                             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            
-                            // Se já venceu (número negativo) ou se vence em 45 dias ou menos
-                            if (diffDays <= 45) {
-                                necessitaRecarga = true;
-                            }
+                            if (diffDays <= 45) necessitaRecarga = true;
                         }
                     }
-                    
-                    if (necessitaRecarga || item.manometro === 'NC') addScan(`Recarga/Manutenção Extintor ${item.tipo_extintor || ''} ${item.capacidade || ''}`.trim(), item);
-                    if (item.condicao === 'NC') addScan(`Peça de Reposição (Gatilho/Mangueira) Extintor ${item.tipo_extintor || ''}`.trim(), item);
+                    if (necessitaRecarga || item.manometro === 'NC') addScan(`Ensaio / Manutenção Extintor ${item.tipo_extintor || ''} ${item.capacidade || ''}`.trim(), 'Fábrica');
+                    if (item.condicao === 'NC') addScan(`Peça de Reposição (Gatilho / Válvula) Extintor ${item.tipo_extintor || ''}`.trim(), 'Fábrica');
                     
                 } else if (item.tipo === 'HIDRANTE') {
-                    if (item.mangueira === 'NC') addScan("Mangueira de Hidrante 1.5''", item);
-                    if (item.esguicho === 'NC') addScan("Esguicho Regulável 1.5'' ou Chave Storz", item);
+                    if (item.mangueira === 'NC') addScan("Mangueira de Hidrante 1.5'' 15m", 'Fábrica');
+                    if (item.esguicho === 'NC') addScan("Esguicho Regulável 1.5'' ou Chave Storz", 'Fábrica');
                     
                 } else if (item.tipo === 'ILUMINACAO' || item.tipo === 'ALARME' || item.tipo === 'DETECTOR') {
-                    if (item.condicao === 'NC') addScan(`Bateria ou Peça de Manutenção de ${item.tipo}`, item);
+                    if (item.condicao === 'NC') addScan(`Bateria ou Peça de Manutenção de ${item.tipo}`, 'Fábrica');
                 }
             });
 
+            // 2. VARREDURA DO ESTOQUE (Almoxarifado)
+            if (dadosEstoque && dadosEstoque.length > 0) {
+                dadosEstoque.forEach(peca => {
+                    if (peca.dataVencimento) {
+                        const dataVencObj = new Date(peca.dataVencimento);
+                        dataVencObj.setHours(dataVencObj.getHours() + 12); // Correção de fuso
+                        const diffTime = dataVencObj - hoje;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        const isExtintor = peca.nome.toUpperCase().includes('EXTINTOR');
+                        
+                        // Regra A: Extintores a 45 dias ou menos do vencimento (Ensaio)
+                        if (isExtintor && diffDays <= 45 && diffDays >= 0) {
+                            addScan(`Ensaio / Manutenção ${peca.nome}`, 'Estoque');
+                        } 
+                        // Regra B: Qualquer item vencido no estoque (Reposição/Ensaio Urgente)
+                        else if (diffDays < 0) {
+                            if (isExtintor) {
+                                addScan(`Ensaio / Manutenção ${peca.nome} (VENCIDO)`, 'Estoque');
+                            } else {
+                                addScan(`Reposição de Estoque: ${peca.nome} (VENCIDO)`, 'Estoque');
+                            }
+                        }
+                    }
+                });
+            }
+
             if (novosItens.length === 0) {
-                alert("Excelente! Nenhuma pendência encontrada que exija compra de materiais.");
+                alert("Excelente! Nenhuma pendência encontrada na Fábrica ou no Estoque.");
                 return;
             }
 
             novosItens.forEach(nItem => {
                 let existe = dadosCompras.find(i => i.nome === nItem.nome);
-                if (existe) existe.quantidade += nItem.quantidade;
-                else dadosCompras.push(nItem);
+                if (existe) {
+                    existe.quantidade += nItem.quantidade;
+                    if (!existe.origem.includes(nItem.origem)) {
+                        existe.origem += ` + ${nItem.origem}`;
+                    }
+                } else {
+                    dadosCompras.push(nItem);
+                }
             });
 
             salvarBackupLocal();
             renderizarListaCompras();
-            mostrarToast(`${novosItens.length} tipos de itens somados pelo Auto-Scan Preventivo!`);
+            mostrarToast(`${novosItens.length} tipos de itens somados pelo Auto-Scan Integrado!`);
         }
 
         function exportarComprasWhatsApp() {
@@ -1598,6 +1645,11 @@
 
             document.getElementById('modal-vistoria').classList.remove('hidden');
             document.getElementById('modal-vistoria').classList.add('flex');
+
+            // NOVO: Gatilho de Salvamento Automático (Auto-Save) ao digitar
+            document.getElementById('form-checklist').oninput = function() {
+                salvarVistoria(true);
+            };
         }
 
         function criarGrupoBotoes(label, idCampo, valorSalvo) {
@@ -1640,15 +1692,18 @@
                 btnClick.className = "flex-1 py-3 rounded-lg border-2 font-bold transition-all bg-red-100 border-red-500 text-red-700";
             }
             hiddenInput.value = valor;
+            
+            // NOVO: Dispara o Auto-Save ao clicar nos botões OK/NC
+            salvarVistoria(true);
         }
 
-        function salvarVistoria() {
+        function salvarVistoria(isSilencioso = false) {
             const obj = {
                 filial: filialAtual,
                 tipo: tipoAtual,
                 id: idEquipamentoAtivo
             };
-
+            
             const elLocalizacao = document.getElementById('input-localizacao');
             obj.localizacao = elLocalizacao ? elLocalizacao.value.trim().toUpperCase() : "";
 
@@ -1667,7 +1722,7 @@
                 if (inputManut && inputManut.value) {
                     const dataRaw = inputManut.value;
                     const partes = dataRaw.split('-');
-                    obj.manutencao = `${partes[2]}/${partes[1]}/${partes[0]}`; 
+                    obj.manutencao = `${partes[2]}/${partes[1]}/${partes[0]}`; // Correção silenciosa mantida
                     obj.manutencao_raw = dataRaw;
                 } else {
                     obj.manutencao = "";
@@ -1682,7 +1737,7 @@
                 if (inputTeste && inputTeste.value) {
                     const dataRaw = inputTeste.value;
                     const partes = dataRaw.split('-');
-                    obj.teste_mangueira = `${partes[2]}/${partes[1]}/${partes[0]}`; 
+                    obj.teste_mangueira = `${partes[2]}/${partes[1]}/${partes[0]}`; // Correção silenciosa mantida
                     obj.teste_mangueira_raw = dataRaw;
                 } else {
                     obj.teste_mangueira = "";
@@ -1704,7 +1759,7 @@
                 const dataRaw = inputVist.value; 
                 if(dataRaw) {
                     const partes = dataRaw.split('-');
-                    obj.vistoria = `${partes[2]}/${partes[1]}/${partes[0]}`; 
+                    obj.vistoria = `${partes[2]}/${partes[1]}/${partes[0]}`; // Correção silenciosa mantida
                     obj.vistoria_raw = dataRaw; 
                 } else {
                     obj.vistoria = "";
@@ -1716,8 +1771,15 @@
             const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
             dadosColetados[chave] = obj;
 
-            reordenarBaseDeDados();
+            salvarBackupLocal(); // Salva no celular imediatamente (Auto-Save)
 
+            // NOVO: Interrompe o processo se for um salvamento silencioso
+            if (isSilencioso === true) {
+                if (typeof renderizarGrid === 'function') renderizarGrid(); // Atualiza cores ao fundo
+                return;
+            }
+
+            reordenarBaseDeDados();
             fecharModal('modal-vistoria');
             renderizarGrid(); 
             atualizarDashboard(); 
@@ -1730,8 +1792,7 @@
                 }
             }
             
-            salvarBackupLocal(); // NOVO: Salva os dados no celular imediatamente
-            mostrarToast("Vistoria salva no dispositivo!"); // ATUALIZADO
+            mostrarToast("Vistoria salva e finalizada!"); // ATUALIZADO
         }
 
         // -----------------------------------------
