@@ -1557,10 +1557,11 @@
         function atualizarDashboard() {
             const container = document.getElementById('dashboard-content');
             container.innerHTML = '';
-
+            
             let globalOK = 0;
             let globalNC = 0;
-
+            let listaPendencias = []; // NOVO: Guarda os itens NC
+            
             const arrayDados = Object.values(dadosColetados);
             const hoje = new Date();
             const mesAtual = hoje.getMonth() + 1;
@@ -1574,7 +1575,7 @@
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
                         if (p.length === 3) {
-                            const dataM = new Date(p[2], p[1] - 1, p[0]);
+                            const dataM = new Date(p[2], p[1] - 1, p[0]); // Correção silenciosa mantida
                             if (dataM < hoje) isExpired = true;
                         }
                     }
@@ -1584,29 +1585,31 @@
                 } else {
                     if (item.condicao === 'NC') isNC = true;
                 }
-
-                if (isNC) globalNC++; else globalOK++;
+                
+                if (isNC) {
+                    globalNC++;
+                    listaPendencias.push(item); // NOVO: Armazena o item defeituoso
+                } else {
+                    globalOK++;
+                }
             });
 
             const filiaisCNPJ = filiais.filter(f => f !== 'CENTRAL_ALARMES');
-
             const htmlFiliais = filiaisCNPJ.map(f => {
                 let stats = {
                     EXTINTOR: { ok: 0, nc: 0 },
                     HIDRANTE: { ok: 0, nc: 0 },
-                    OUTROS: { ok: 0, nc: 0 } 
+                    OUTROS: { ok: 0, nc: 0 }
                 };
-
                 arrayDados.forEach(item => {
                     if (item.filial === f) {
                         let isNC = false;
-                        
                         if (item.tipo === 'EXTINTOR') {
                             let isExpired = false;
                             if (item.manutencao && item.manutencao.includes('/')) {
                                 const p = item.manutencao.split('/');
                                 if (p.length === 3) {
-                                    const dataM = new Date(p[2], p[1] - 1, p[0]);
+                                    const dataM = new Date(p[2], p[1] - 1, p[0]); // Correção silenciosa mantida
                                     if (dataM < hoje) isExpired = true;
                                 }
                             }
@@ -1616,9 +1619,7 @@
                         } else {
                             if (item.condicao === 'NC') isNC = true;
                         }
-
                         let grupo = (item.tipo === 'EXTINTOR' || item.tipo === 'HIDRANTE') ? item.tipo : 'OUTROS';
-
                         if (isNC) {
                             stats[grupo].nc++;
                         } else {
@@ -1626,67 +1627,62 @@
                         }
                     }
                 });
-
                 return `
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="bg-aldark text-white px-4 py-2 font-bold flex justify-between items-center text-sm">
-                            <span>${f.replace('_', ' ')}</span>
-                            <span class="text-xs text-gray-300 font-normal">Sistemas Ativos</span>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-aldark text-white px-4 py-2 font-bold flex justify-between items-center text-sm">
+                        <span>${f.replace('_', ' ')}</span>
+                        <span class="text-xs text-gray-300 font-normal">Sistemas Ativos</span>
+                    </div>
+                    <div class="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm items-start">
+                        <!-- EXTINTORES -->
+                        <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'EXTINTOR')">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🧯 Extintores</div>
+                                <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
+                            </div>
+                            <div class="flex justify-between items-center px-1">
+                                <span class="text-green-600 font-black">${stats.EXTINTOR.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                <span class="${stats.EXTINTOR.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.EXTINTOR.nc} <span class="text-[10px] font-normal">NC</span></span>
+                            </div>
+                            <div id="dash-mini-container-${f}-EXTINTOR" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="dashChartCond-${f}-EXTINTOR"></canvas></div>
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="dashChartManom-${f}-EXTINTOR"></canvas></div>
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="dashChartVal-${f}-EXTINTOR"></canvas></div>
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-EXTINTOR"></canvas></div>
+                            </div>
                         </div>
-                        <div class="p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm items-start">
-                            
-                            <!-- EXTINTORES -->
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'EXTINTOR')">
-                                <div class="flex justify-between items-center mb-1">
-                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🧯 Extintores</div>
-                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
-                                </div>
-                                <div class="flex justify-between items-center px-1">
-                                    <span class="text-green-600 font-black">${stats.EXTINTOR.ok} <span class="text-[10px] font-normal">OK</span></span>
-                                    <span class="${stats.EXTINTOR.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.EXTINTOR.nc} <span class="text-[10px] font-normal">NC</span></span>
-                                </div>
-                                <div id="dash-mini-container-${f}-EXTINTOR" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-2">
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="dashChartCond-${f}-EXTINTOR"></canvas></div>
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="dashChartManom-${f}-EXTINTOR"></canvas></div>
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="dashChartVal-${f}-EXTINTOR"></canvas></div>
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-EXTINTOR"></canvas></div>
-                                </div>
+                        <!-- HIDRANTES -->
+                        <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'HIDRANTE')">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚒 Abrigos / Hidrantes</div>
+                                <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
                             </div>
-
-                            <!-- HIDRANTES -->
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'HIDRANTE')">
-                                <div class="flex justify-between items-center mb-1">
-                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚒 Abrigos / Hidrantes</div>
-                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
-                                </div>
-                                <div class="flex justify-between items-center px-1">
-                                    <span class="text-green-600 font-black">${stats.HIDRANTE.ok} <span class="text-[10px] font-normal">OK</span></span>
-                                    <span class="${stats.HIDRANTE.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.HIDRANTE.nc} <span class="text-[10px] font-normal">NC</span></span>
-                                </div>
-                                <div id="dash-mini-container-${f}-HIDRANTE" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-3 gap-2">
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho/Chave</span><canvas id="dashChartEsg-${f}-HIDRANTE"></canvas></div>
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="dashChartMang-${f}-HIDRANTE"></canvas></div>
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-HIDRANTE"></canvas></div>
-                                </div>
+                            <div class="flex justify-between items-center px-1">
+                                <span class="text-green-600 font-black">${stats.HIDRANTE.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                <span class="${stats.HIDRANTE.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.HIDRANTE.nc} <span class="text-[10px] font-normal">NC</span></span>
                             </div>
-
-                            <!-- OUTROS (ALARMES/ILUMINACAO) -->
-                            <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'OUTROS')">
-                                <div class="flex justify-between items-center mb-1">
-                                    <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚨 Alarmes e Ilum.</div>
-                                    <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
-                                </div>
-                                <div class="flex justify-between items-center px-1">
-                                    <span class="text-green-600 font-black">${stats.OUTROS.ok} <span class="text-[10px] font-normal">OK</span></span>
-                                    <span class="${stats.OUTROS.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.OUTROS.nc} <span class="text-[10px] font-normal">NC</span></span>
-                                </div>
-                                <div id="dash-mini-container-${f}-OUTROS" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 gap-2">
-                                    <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="dashChartCond-${f}-OUTROS"></canvas></div>
-                                </div>
+                            <div id="dash-mini-container-${f}-HIDRANTE" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-3 gap-2">
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho/Chave</span><canvas id="dashChartEsg-${f}-HIDRANTE"></canvas></div>
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="dashChartMang-${f}-HIDRANTE"></canvas></div>
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="dashChartSinal-${f}-HIDRANTE"></canvas></div>
                             </div>
-
+                        </div>
+                        <!-- OUTROS (ALARMES/ILUMINACAO) -->
+                        <div class="bg-gray-50 p-2 rounded border border-gray-100 flex flex-col justify-start relative cursor-pointer hover:bg-gray-200 transition" onclick="toggleDashMiniGraficos('${f}', 'OUTROS')">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="font-bold text-gray-500 text-xs uppercase tracking-wider">🚨 Alarmes e Ilum.</div>
+                                <div class="w-1.5 h-4 bg-purple-600 rounded-sm"></div>
+                            </div>
+                            <div class="flex justify-between items-center px-1">
+                                <span class="text-green-600 font-black">${stats.OUTROS.ok} <span class="text-[10px] font-normal">OK</span></span>
+                                <span class="${stats.OUTROS.nc > 0 ? 'text-red-600' : 'text-gray-300'} font-black">${stats.OUTROS.nc} <span class="text-[10px] font-normal">NC</span></span>
+                            </div>
+                            <div id="dash-mini-container-${f}-OUTROS" class="hidden mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 gap-2">
+                                <div class="relative h-16 w-full flex flex-col items-center"><span class="text-[8px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="dashChartCond-${f}-OUTROS"></canvas></div>
+                            </div>
                         </div>
                     </div>
+                </div>
                 `;
             }).join('');
 
@@ -1694,34 +1690,89 @@
             const saudePer = totalGeral > 0 ? Math.round((globalOK / totalGeral) * 100) : 0;
             const corSaude = saudePer < 90 ? 'text-red-600' : 'text-green-600';
 
+            // NOVO: Montagem da Tabela/Lista Suspensa de NCs com os quadradinhos
+            let htmlListaNC = `<div id="lista-nc-global" class="hidden mt-2 mb-2 bg-white border border-red-200 rounded-xl shadow-md flex-col overflow-hidden transition-all">`;
+            if (listaPendencias.length > 0) {
+                htmlListaNC += `<div class="bg-red-50 p-2 border-b border-red-200 font-bold text-red-800 text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2">👇 Selecione o item para ir até ele</div>`;
+                htmlListaNC += `<div class="max-h-60 overflow-y-auto divide-y divide-gray-100">`;
+                
+                listaPendencias.forEach(item => {
+                    // Quadradinho vermelho de aviso
+                    const iconQuadrado = `<svg class="w-5 h-5 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm3 8a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>`;
+                    htmlListaNC += `
+                    <div onclick="navegarParaNC('${item.filial}', '${item.tipo}', '${item.id}')" class="p-3 flex items-center gap-3 hover:bg-red-50 cursor-pointer transition-colors group">
+                        ${iconQuadrado}
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-gray-800 group-hover:text-red-700">${item.id} - ${item.tipo}</div>
+                            <div class="text-[10px] text-gray-500 uppercase">${item.filial.replace('_', ' ')} ${item.localizacao ? ' | ' + item.localizacao : ''}</div>
+                        </div>
+                        <span class="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-1 rounded shadow-sm group-hover:bg-red-200">IR ➔</span>
+                    </div>`;
+                });
+                
+                htmlListaNC += `</div>`;
+            } else {
+                htmlListaNC += `<div class="p-4 text-center text-sm text-gray-500 font-bold">Nenhuma pendência encontrada! Tudo OK 🎉</div>`;
+            }
+            htmlListaNC += `</div>`;
+
             const htmlGlobal = `
-                <div class="flex flex-col gap-3 mb-2">
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
-                        <div>
-                            <div class="text-xs font-bold text-gray-500 uppercase tracking-widest">Saúde da Fábrica</div>
-                            <div class="text-3xl font-black ${corSaude}">${totalGeral > 0 ? saudePer + '%' : '--'}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs text-gray-400">Total Vistoriado</div>
-                            <div class="text-xl font-bold text-aldark">${totalGeral} Eqp.</div>
-                        </div>
+            <div class="flex flex-col gap-3 mb-2">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest">Saúde da Fábrica</div>
+                        <div class="text-3xl font-black ${corSaude}">${totalGeral > 0 ? saudePer + '%' : '--'}</div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-xl">
-                            <div class="text-2xl font-black text-green-700">${globalOK}</div>
-                            <div class="text-xs font-bold text-green-800 uppercase mt-1">Conformes (OK)</div>
-                        </div>
-                        <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl">
-                            <div class="text-2xl font-black text-red-700">${globalNC}</div>
-                            <div class="text-xs font-bold text-red-800 uppercase mt-1">Não Conformidades (NC)</div>
-                        </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">Total Vistoriado</div>
+                        <div class="text-xl font-bold text-aldark">${totalGeral} Eqp.</div>
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-xl">
+                        <div class="text-2xl font-black text-green-700">${globalOK}</div>
+                        <div class="text-xs font-bold text-green-800 uppercase mt-1">Conformes (OK)</div>
+                    </div>
+                    <!-- NOVO: Transformado em botão clicável -->
+                    <div class="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl cursor-pointer hover:bg-red-100 transition shadow-sm active:scale-95" onclick="toggleListaNC()" title="Clique para ver os itens">
+                        <div class="text-2xl font-black text-red-700">${globalNC}</div>
+                        <div class="text-xs font-bold text-red-800 uppercase mt-1 flex items-center justify-between">Não Conformidades <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                    </div>
+                </div>
+                ${htmlListaNC}
+            </div>
             `;
-
+            
             container.innerHTML = htmlGlobal + htmlFiliais;
-
             renderizarGraficos(arrayDados);
+        }
+
+        // NOVO: Abre e Fecha a Lista Suspensa de NCs no Dashboard
+        function toggleListaNC() {
+            const lista = document.getElementById('lista-nc-global');
+            if (lista) {
+                if (lista.classList.contains('hidden')) {
+                    lista.classList.remove('hidden');
+                    lista.classList.add('flex');
+                } else {
+                    lista.classList.add('hidden');
+                    lista.classList.remove('flex');
+                }
+            }
+        }
+
+        // NOVO: Navega do Dashboard direto para o Equipamento com defeito
+        function navegarParaNC(filial, tipo, id) {
+            // 1. Muda para a aba da Filial correspondente
+            mudarFilial(filial);
+            
+            // 2. Muda para a aba do Tipo do Equipamento (Extintor, Hidrante...)
+            mudarTipo(tipo);
+            
+            // 3. Aguarda uma fração de segundo para a tela desenhar os cartões e abre o Modal
+            setTimeout(() => {
+                abrirChecklist(id);
+            }, 150);
         }
 
         function renderizarGraficos(dados) {
