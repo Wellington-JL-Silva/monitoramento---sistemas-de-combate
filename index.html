@@ -791,18 +791,74 @@
             
             const chaveGrid = `${filialAtual}_${tipoAtual}`;
             const ids = inventarioGrid[chaveGrid] || [];
-            
+
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+
             ids.forEach(id => {
                 const chaveUnica = `${filialAtual}_${tipoAtual}_${id}`;
-                const jaVistoriado = dadosColetados[chaveUnica] !== undefined;
+                const item = dadosColetados[chaveUnica];
                 
-                const bgClass = jaVistoriado ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-600 shadow-sm';
-                const checkIcon = jaVistoriado ? `<div class="absolute top-1 right-1 text-green-600"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>` : '';
+                let bgClass = 'bg-white border-gray-300 text-gray-600 shadow-sm hover:bg-gray-50';
+                let checkIcon = '';
+                let infoTempo = '<span class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Pendente</span>';
+
+                if (item) {
+                    let isNC = false;
+                    
+                    // 1. O "Radar" de Problemas (Procura NCs ou Validade Vencida)
+                    if (item.tipo === 'EXTINTOR') {
+                        let isExpired = false;
+                        if (item.manutencao && item.manutencao.includes('/')) {
+                            const p = item.manutencao.split('/');
+                            if (p.length === 3) {
+                                const dataM = new Date(p[2], p[1] - 1, p[0]);
+                                if (dataM < hoje) isExpired = true;
+                            }
+                        }
+                        if (isExpired || item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                    } else if (item.tipo === 'HIDRANTE') {
+                        if (item.esguicho === 'NC' || item.mangueira === 'NC' || item.sinalizacao === 'NC') isNC = true;
+                    } else {
+                        if (item.condicao === 'NC') isNC = true;
+                    }
+
+                    // 2. Aplicação das Cores (Mapa de Calor) e Ícones (SVG)
+                    if (isNC) {
+                        bgClass = 'bg-red-50 border-red-500 text-red-700 shadow-sm';
+                        checkIcon = `<div class="absolute top-1 right-1 text-red-600"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></div>`;
+                    } else {
+                        bgClass = 'bg-green-50 border-green-500 text-green-700 shadow-sm';
+                        checkIcon = `<div class="absolute top-1 right-1 text-green-600"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>`;
+                    }
+
+                    // 3. Relógio Matemático: Cálculo de Tempo desde a Última Vistoria
+                    if (item.vistoria && item.vistoria.includes('/')) {
+                        const p = item.vistoria.split('/');
+                        if (p.length === 3) {
+                            const dataVistoria = new Date(p[2], p[1] - 1, p[0]);
+                            const diffTime = hoje - dataVistoria;
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays === 0) {
+                                infoTempo = `<span class="text-[9px] font-medium mt-1 opacity-80">Hoje</span>`;
+                            } else if (diffDays === 1) {
+                                infoTempo = `<span class="text-[9px] font-medium mt-1 opacity-80">Há 1 dia</span>`;
+                            } else if (diffDays > 1) {
+                                infoTempo = `<span class="text-[9px] font-medium mt-1 opacity-80">Há ${diffDays} dias</span>`;
+                            } else {
+                                infoTempo = `<span class="text-[9px] font-medium mt-1 opacity-80 text-yellow-600">Data Incorreta</span>`;
+                            }
+                        }
+                    } else {
+                        infoTempo = `<span class="text-[9px] font-medium mt-1 opacity-80">Sem data</span>`;
+                    }
+                }
 
                 const btn = document.createElement('button');
                 btn.className = `relative aspect-square flex flex-col items-center justify-center rounded-xl border-2 font-bold text-sm sm:text-base active:scale-95 transition-transform ${bgClass}`;
                 btn.onclick = () => abrirChecklist(id);
-                btn.innerHTML = `${checkIcon} ${id}`;
+                btn.innerHTML = `${checkIcon} <span>${id}</span> ${infoTempo}`;
                 grid.appendChild(btn);
             });
         }
