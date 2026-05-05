@@ -143,6 +143,29 @@
     </main>
 
     <!-- ========================================================================= -->
+    <!-- VIEW: ESTOQUE (Armazém e Peças) -->
+    <!-- ========================================================================= -->
+    <main id="view-estoque" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <div class="flex justify-between items-end mb-6 border-b-2 border-amber-500 pb-2">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 uppercase tracking-wider">📦 Gestão de Estoque</h2>
+                <p class="text-xs text-gray-500 mt-1">Controle de peças, reposição e materiais.</p>
+            </div>
+            <button onclick="adicionarItemEstoque()" class="text-amber-700 text-sm font-bold flex items-center gap-1 bg-amber-100 px-4 py-2 rounded-lg border border-amber-300 shadow-sm transition hover:bg-amber-200">
+                + Nova Peça
+            </button>
+        </div>
+        
+        <!-- Grid onde os itens do estoque vão aparecer -->
+        <div id="grid-estoque" class="flex flex-col gap-3">
+            <!-- Placeholder temporário -->
+            <div class="text-center p-10 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+                <p class="text-gray-400 font-bold">O estoque está vazio no momento.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
     <!-- MODAL DE VISTORIA (Checklist) -->
     <!-- ========================================================================= -->
     <div id="modal-vistoria" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex-col justify-end sm:justify-center items-center">
@@ -453,34 +476,45 @@
         function renderizarMenuFiliais() {
             const nav = document.getElementById('nav-filiais');
             nav.innerHTML = '';
-            
             const isDashActive = 'DASHBOARD' === filialAtual;
+            
             nav.innerHTML += `
-                <li class="snap-center shrink-0">
-                    <button onclick="mudarFilial('DASHBOARD')" 
-                        class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
-                        ${isDashActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
-                        📊 DASHBOARD
-                    </button>
-                </li>
+            <li class="snap-center shrink-0">
+                <button onclick="mudarFilial('DASHBOARD')"
+                class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+                ${isDashActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                📊 DASHBOARD
+                </button>
+            </li>
             `;
-
+            
             filiais.forEach(filial => {
                 const isActive = filial === filialAtual;
                 const li = document.createElement('li');
                 li.className = "snap-center shrink-0";
-                
                 let nomeFormatado = filial.replace("_", " ");
-                
                 li.innerHTML = `
-                    <button onclick="mudarFilial('${filial}')" 
-                        class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
-                        ${isActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
-                        ${nomeFormatado}
-                    </button>
+                <button onclick="mudarFilial('${filial}')"
+                class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+                ${isActive ? 'border-alblue text-alblue' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+                ${nomeFormatado}
+                </button>
                 `;
                 nav.appendChild(li);
             });
+
+            // NOVO: Adiciona a aba de Estoque no final da lista
+            const isEstoqueActive = 'ESTOQUE' === filialAtual;
+            const liEstoque = document.createElement('li');
+            liEstoque.className = "snap-center shrink-0 border-l-2 border-gray-200 ml-1 pl-1";
+            liEstoque.innerHTML = `
+            <button onclick="mudarFilial('ESTOQUE')"
+            class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+            ${isEstoqueActive ? 'border-amber-500 text-amber-600 bg-amber-50' : 'border-transparent text-gray-500 hover:text-gray-700'}">
+            📦 ESTOQUE
+            </button>
+            `;
+            nav.appendChild(liEstoque);
         }
 
         function renderizarMenuTipos() {
