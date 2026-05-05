@@ -35,7 +35,8 @@
     <!-- HEADER: Título e Exportação -->
     <header class="bg-aldark text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
         <div>
-            <h1 class="text-lg font-bold">SGI Vistoria</h1>
+            <!-- NOVO: Título transformado em botão secreto para o administrador -->
+            <h1 class="text-lg font-bold cursor-pointer hover:text-blue-300 transition-colors" onclick="abrirCofreLocal()" title="Acesso Restrito">SGI Vistoria</h1>
             <p class="text-xs text-gray-400">AL Industrial - Coleta Mobile</p>
             <!-- NOVO: MENU DE HISTÓRICO DE VISTORIAS -->
             <select id="select-historico" onchange="carregarHistorico(this.value)" class="mt-1 bg-gray-800 text-gray-200 text-xs py-1 px-2 rounded border border-gray-600 outline-none hidden max-w-[160px] truncate shadow-inner">
@@ -279,6 +280,28 @@
             localStorage.setItem('sgi_emergencia_backup', JSON.stringify(backup));
         }
 
+        // NOVO: Função do Botão Secreto (Acesso Administrador)
+        function abrirCofreLocal() {
+            const senha = prompt("ACESSO RESTRITO:\nDigite a senha do administrador:");
+            if (senha === "WELL2103") {
+                const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
+                if (backupLocalStr) {
+                    const backupLocal = JSON.parse(backupLocalStr);
+                    const dataLocal = backupLocal.dataUltimaEdicao;
+                    if (confirm(`🔐 COFRE ABERTO!\n\nBackup Local encontrado no aparelho.\nSalvo em: ${dataLocal}\n\nDeseja FORÇAR A RESTAURAÇÃO deste backup (sobrepondo a nuvem)?`)) {
+                        dadosColetados = backupLocal.dados || {};
+                        reordenarBaseDeDados();
+                        iniciarInterfaceVazia();
+                        mostrarToast(`Backup Local Restaurado pelo Administrador!`);
+                    }
+                } else {
+                    alert("Nenhum backup local encontrado neste aparelho.");
+                }
+            } else if (senha !== null && senha.trim() !== "") {
+                alert("Senha Incorreta! Acesso negado.");
+            }
+        }
+
         // -----------------------------------------
         // ORDENAÇÃO GLOBAL (MASTER DATA E VISUAL)
         // -----------------------------------------
@@ -317,7 +340,7 @@
             let jsonFiles = [];
             let urlMaisRecente = '';
 
-            // 1. TENTA BUSCAR DA NUVEM (GITHUB)
+            // 1. BUSCA DA NUVEM (GITHUB) - SILENCIOSO
             try {
                 const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
                 const responseCat = await fetch(repoApiUrl);
@@ -353,37 +376,10 @@
                     selectHist.appendChild(opt);
                 });
                 selectHist.classList.remove('hidden');
-                urlMaisRecente = jsonFiles[0].download_url;
+                urlMaisRecente = jsonFiles[0].download_url; // Pega sempre o mais recente da nuvem
             }
 
-            // 2. O JUIZ (COMPARA NUVEM VS LOCAL)
-            const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
-            
-            if (backupLocalStr) {
-                const backupLocal = JSON.parse(backupLocalStr);
-                const dataLocal = backupLocal.dataUltimaEdicao; // ex: "05/05/2026, 14:30:00"
-
-                if (jsonFiles.length > 0) {
-                    // Tem na nuvem e tem no celular. Pergunta ao usuário qual priorizar.
-                    const msg = `Encontramos um backup recente não sincronizado no seu aparelho!\n(Salvo em: ${dataLocal})\n\n[OK] RESTAURAR DO APARELHO\n[CANCELAR] BAIXAR DA NUVEM (GitHub)`;
-                    if (confirm(msg)) {
-                        dadosColetados = backupLocal.dados || {};
-                        reordenarBaseDeDados();
-                        iniciarInterfaceVazia();
-                        mostrarToast(`Backup Local Restaurado com sucesso!`);
-                        return; // Finaliza a inicialização aqui
-                    }
-                } else {
-                    // Sem internet/Nuvem, mas tem o backup local.
-                    dadosColetados = backupLocal.dados || {};
-                    reordenarBaseDeDados();
-                    iniciarInterfaceVazia();
-                    mostrarToast(`Modo Offline: Backup Local Restaurado!`);
-                    return; // Finaliza a inicialização aqui
-                }
-            }
-
-            // 3. SE ESCOLHEU NUVEM OU NÃO TEM LOCAL
+            // 2. CARREGAMENTO CEGO DA NUVEM (Foco no Usuário Comum)
             if (urlMaisRecente) {
                 try {
                     await carregarDados(urlMaisRecente);
@@ -392,8 +388,10 @@
                     iniciarInterfaceVazia();
                 }
             } else {
-                alert("Nenhum backup encontrado na nuvem ou no aparelho. O sistema iniciará vazio.");
+                // Se não tiver internet ou nuvem vazia, inicia em branco. 
+                // O administrador pode puxar o local clicando no título.
                 iniciarInterfaceVazia();
+                mostrarToast("Iniciado vazio (Sem conexão ou nuvem vazia).");
             }
         }
 
