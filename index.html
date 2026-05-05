@@ -35,8 +35,11 @@
     <!-- HEADER: Título e Exportação -->
     <header class="bg-aldark text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
         <div>
-            <!-- NOVO: Título transformado em botão secreto para o administrador -->
-            <h1 class="text-lg font-bold cursor-pointer hover:text-blue-300 transition-colors" onclick="abrirCofreLocal()" title="Acesso Restrito">SGI Vistoria</h1>
+            <div class="flex items-center gap-3 mb-0.5">
+                <h1 class="text-lg font-bold">SGI Vistoria</h1>
+                <!-- NOVO: Botão de Alternância Nuvem/Local do Modo OP -->
+                <button onclick="alternarModoLeitura()" id="btn-modo-leitura" class="bg-blue-900 text-blue-200 text-[10px] px-2 py-0.5 rounded border border-blue-700 font-bold tracking-wider hover:bg-blue-800 transition shadow-sm" title="Alternar Nuvem/Local">☁️ NUVEM</button>
+            </div>
             <p class="text-xs text-gray-400">AL Industrial - Coleta Mobile</p>
             <!-- NOVO: MENU DE HISTÓRICO DE VISTORIAS -->
             <select id="select-historico" onchange="carregarHistorico(this.value)" class="mt-1 bg-gray-800 text-gray-200 text-xs py-1 px-2 rounded border border-gray-600 outline-none hidden max-w-[160px] truncate shadow-inner">
@@ -161,6 +164,39 @@
             <!-- Placeholder temporário -->
             <div class="text-center p-10 border-2 border-dashed border-gray-300 rounded-xl bg-white">
                 <p class="text-gray-400 font-bold">O estoque está vazio no momento.</p>
+            </div>
+        </div>
+
+        <!-- NOVO: MODAL PARA ADICIONAR ITEM DETALHADO AO ESTOQUE -->
+        <div id="modal-add-estoque" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+                <div class="bg-amber-500 p-4 flex justify-between items-center border-b border-amber-600">
+                    <h3 class="font-bold text-lg text-white flex items-center gap-2"><i class="fa-solid fa-box-open"></i> Novo Item no Estoque</h3>
+                    <button onclick="fecharModalEstoque()" class="text-white font-bold text-2xl hover:text-amber-200 transition-colors leading-none">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Tipo / Descrição</label>
+                        <input type="text" id="estoque-nome" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="Ex: Extintor PQS 4kg, Mangueira 1.5...">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Código / Lote (Opcional)</label>
+                        <input type="text" id="estoque-codigo" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="Ex: 12345 ou Lote-A">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Vencimento / Teste (Opcional)</label>
+                            <input type="date" id="estoque-data" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Quantidade Inicial</label>
+                            <input type="number" id="estoque-qtd" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-black text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-center" value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <button onclick="salvarNovoItemEstoque()" class="w-full bg-amber-500 text-white font-black uppercase tracking-widest py-3 rounded-lg hover:bg-amber-600 active:scale-95 transition-all shadow-md">Salvar no Catálogo</button>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -305,26 +341,32 @@
             localStorage.setItem('sgi_emergencia_backup', JSON.stringify(backup));
         }
 
-        // NOVO: Função do Botão Secreto (Acesso Administrador)
-        function abrirCofreLocal() {
-            const senha = prompt("ACESSO RESTRITO:\nDigite a senha do administrador:");
+        // NOVO: Alternância Inteligente de Modo (Nuvem vs Local - Modo OP)
+        function alternarModoLeitura() {
+            const senha = prompt("ACESSO MODO OP:\nDigite a senha para alterar a fonte de dados do sistema:");
             if (senha === "WELL2103") {
-                const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
-                if (backupLocalStr) {
-                    const backupLocal = JSON.parse(backupLocalStr);
-                    const dataLocal = backupLocal.dataUltimaEdicao;
-                    if (confirm(`🔐 COFRE ABERTO!\n\nBackup Local encontrado no aparelho.\nSalvo em: ${dataLocal}\n\nDeseja FORÇAR A RESTAURAÇÃO deste backup (sobrepondo a nuvem)?`)) {
-                        dadosColetados = backupLocal.dados || {};
-                        dadosEstoque = backupLocal.estoque || []; // NOVO: Recupera o estoque do celular
-                        reordenarBaseDeDados();
-                        iniciarInterfaceVazia();
-                        mostrarToast(`Backup Local Restaurado pelo Administrador!`);
-                    }
-                } else {
-                    alert("Nenhum backup local encontrado neste aparelho.");
-                }
+                let modoAtual = localStorage.getItem('sgi_modo_leitura') || 'NUVEM';
+                let novoModo = modoAtual === 'NUVEM' ? 'LOCAL' : 'NUVEM';
+                
+                localStorage.setItem('sgi_modo_leitura', novoModo);
+                
+                alert(`Chave virada com sucesso!\nO sistema agora vai inicializar SEMPRE a partir da: ${novoModo}\n\nA página será recarregada para aplicar a mudança.`);
+                location.reload(); 
             } else if (senha !== null && senha.trim() !== "") {
                 alert("Senha Incorreta! Acesso negado.");
+            }
+        }
+
+        function atualizarBotaoModo() {
+            const btn = document.getElementById('btn-modo-leitura');
+            if(!btn) return;
+            const modo = localStorage.getItem('sgi_modo_leitura') || 'NUVEM';
+            if (modo === 'LOCAL') {
+                btn.innerHTML = '📱 LOCAL';
+                btn.className = 'bg-amber-900 text-amber-200 text-[10px] px-2 py-0.5 rounded border border-amber-700 font-bold tracking-wider hover:bg-amber-800 transition shadow-sm';
+            } else {
+                btn.innerHTML = '☁️ NUVEM';
+                btn.className = 'bg-blue-900 text-blue-200 text-[10px] px-2 py-0.5 rounded border border-blue-700 font-bold tracking-wider hover:bg-blue-800 transition shadow-sm';
             }
         }
 
@@ -359,12 +401,32 @@
         // 2. INICIALIZAÇÃO DA INTERFACE E INTEGRAÇÃO GITHUB (FETCH)
         // -----------------------------------------
         window.onload = () => {
+            atualizarBotaoModo(); // Pinta o botão assim que abre
             inicializarApp();
         };
 
         async function inicializarApp() {
             let jsonFiles = [];
             let urlMaisRecente = '';
+
+            // 0. VERIFICA A CHAVE DO MODO OP (NUVEM VS LOCAL)
+            const modoLeitura = localStorage.getItem('sgi_modo_leitura') || 'NUVEM';
+            
+            if (modoLeitura === 'LOCAL') {
+                const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
+                if (backupLocalStr) {
+                    const backupLocal = JSON.parse(backupLocalStr);
+                    dadosColetados = backupLocal.dados || {};
+                    dadosEstoque = backupLocal.estoque || [];
+                    reordenarBaseDeDados();
+                    iniciarInterfaceVazia();
+                    mostrarToast(`📱 MODO LOCAL: Último save em ${backupLocal.dataUltimaEdicao}`);
+                } else {
+                    alert("Atenção: Modo Local ativado, mas nenhum dado foi encontrado no celular. Iniciando vazio.");
+                    iniciarInterfaceVazia();
+                }
+                return; // Interrompe aqui. O aplicativo não vai procurar nada no GitHub.
+            }
 
             // 1. BUSCA DA NUVEM (GITHUB) - SILENCIOSO
             try {
@@ -405,17 +467,16 @@
                 urlMaisRecente = jsonFiles[0].download_url; // Pega sempre o mais recente da nuvem
             }
 
-            // 2. CARREGAMENTO CEGO DA NUVEM (Foco no Usuário Comum)
+            // 2. CARREGAMENTO DA NUVEM
             if (urlMaisRecente) {
                 try {
                     await carregarDados(urlMaisRecente);
+                    mostrarToast("☁️ MODO NUVEM: Sincronizado com GitHub.");
                 } catch(e) {
                     alert("Erro ao carregar os dados da nuvem.");
                     iniciarInterfaceVazia();
                 }
             } else {
-                // Se não tiver internet ou nuvem vazia, inicia em branco. 
-                // O administrador pode puxar o local clicando no título.
                 iniciarInterfaceVazia();
                 mostrarToast("Iniciado vazio (Sem conexão ou nuvem vazia).");
             }
@@ -1007,14 +1068,36 @@
                 const qtd = parseInt(item.quantidade) || 0;
                 const corQtd = qtd <= 0 ? 'text-red-500 bg-red-50 border-red-200' : 'text-green-600 bg-green-50 border-green-200';
                 
+                // NOVO: Componentes Visuais para Código e Data
+                const infoCodigo = item.codigo ? `<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 uppercase">CÓD: ${item.codigo}</span>` : '';
+                let infoData = '';
+                
+                if (item.dataVencimento) {
+                    // Correção de fuso horário para a data aparecer correta no Brasil
+                    const dataObj = new Date(item.dataVencimento);
+                    dataObj.setHours(dataObj.getHours() + 12); 
+                    const hoje = new Date();
+                    hoje.setHours(0,0,0,0);
+                    
+                    const isVencido = dataObj < hoje;
+                    const corData = isVencido ? 'bg-red-50 text-red-700 border-red-300' : 'bg-amber-50 text-amber-700 border-amber-300';
+                    const iconData = isVencido ? '<i class="fa-solid fa-triangle-exclamation"></i> Vencido:' : '<i class="fa-solid fa-calendar-days"></i> Val/Teste:';
+                    
+                    infoData = `<span class="${corData} px-2 py-0.5 rounded text-[10px] font-bold border ml-1">${iconData} ${dataObj.toLocaleDateString('pt-BR')}</span>`;
+                }
+                
                 html += `
                 <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 transition-all hover:shadow-md">
                     <div class="flex-1 text-center sm:text-left w-full sm:w-auto">
-                        <h3 class="font-bold text-gray-800 text-lg uppercase">${item.nome}</h3>
-                        <p class="text-xs text-gray-500 mt-1">Atualizado em: ${item.ultimaAtualizacao || 'Sem data'}</p>
+                        <h3 class="font-bold text-gray-800 text-lg uppercase leading-tight mb-1">${item.nome}</h3>
+                        <div class="flex flex-wrap justify-center sm:justify-start gap-1 mb-1">
+                            ${infoCodigo}
+                            ${infoData}
+                        </div>
+                        <p class="text-[9px] text-gray-400 mt-1 uppercase tracking-widest">Atualizado: ${item.ultimaAtualizacao || 'Sem data'}</p>
                     </div>
                     
-                    <div class="flex items-center gap-4 justify-center w-full sm:w-auto">
+                    <div class="flex items-center gap-4 justify-center w-full sm:w-auto mt-2 sm:mt-0">
                         <!-- Controle de Quantidade -->
                         <div class="flex items-center bg-gray-50 rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                             <button onclick="alterarQuantidadeEstoque(${index}, -1)" class="w-12 h-10 flex items-center justify-center text-red-500 hover:bg-red-100 font-black text-xl transition-colors active:bg-red-200">-</button>
@@ -1036,20 +1119,45 @@
             grid.innerHTML = html;
         }
 
+        // NOVO: Função que agora chama o Modal no lugar do Prompt
         function adicionarItemEstoque() {
-            const nomePeca = prompt("Qual o nome da nova peça/material?");
-            if (!nomePeca || nomePeca.trim() === "") return;
-            
+            document.getElementById('modal-add-estoque').classList.remove('hidden');
+            document.getElementById('estoque-nome').value = '';
+            document.getElementById('estoque-codigo').value = '';
+            document.getElementById('estoque-data').value = '';
+            document.getElementById('estoque-qtd').value = '1';
+            document.getElementById('estoque-nome').focus();
+        }
+
+        function fecharModalEstoque() {
+            document.getElementById('modal-add-estoque').classList.add('hidden');
+        }
+
+        // NOVO: Função que processa os dados digitados na nova Janela
+        function salvarNovoItemEstoque() {
+            const nome = document.getElementById('estoque-nome').value;
+            const codigo = document.getElementById('estoque-codigo').value;
+            const dataVenc = document.getElementById('estoque-data').value;
+            const qtd = parseInt(document.getElementById('estoque-qtd').value) || 0;
+
+            if (!nome || nome.trim() === "") {
+                alert("O Tipo / Descrição da peça é obrigatório!");
+                return;
+            }
+
             const novaPeca = {
-                nome: nomePeca.trim().toUpperCase(),
-                quantidade: 0,
+                nome: nome.trim().toUpperCase(),
+                codigo: codigo.trim().toUpperCase(),
+                dataVencimento: dataVenc, // Salva o formato YYYY-MM-DD
+                quantidade: qtd,
                 ultimaAtualizacao: new Date().toLocaleDateString('pt-BR')
             };
-            
+
             dadosEstoque.push(novaPeca);
             salvarBackupLocal();
             renderizarEstoque();
-            mostrarToast(novaPeca.nome + " adicionado ao catálogo!");
+            fecharModalEstoque();
+            mostrarToast(novaPeca.nome + " adicionado ao estoque!");
         }
 
         function alterarQuantidadeEstoque(index, delta) {
@@ -1066,11 +1174,11 @@
 
         function excluirItemEstoque(index) {
             const peca = dadosEstoque[index];
-            if (confirm(`Atenção: Tem certeza que deseja remover [ ${peca.nome} ] permanentemente do catálogo de estoque?`)) {
+            if (confirm(`Atenção: Tem certeza que deseja remover [ ${peca.nome} ] permanentemente do estoque?`)) {
                 dadosEstoque.splice(index, 1);
                 salvarBackupLocal();
                 renderizarEstoque();
-                mostrarToast("Peça removida do estoque!");
+                mostrarToast("Peça removida!");
             }
         }
 
@@ -1752,7 +1860,7 @@
             const file = new Blob([conteudo], {type: mimeType});
             a.href = URL.createObjectURL(file);
             a.download = nomeArquivo;
-            a.click();
+            a.click();a
             URL.revokeObjectURL(a.href);
             
             fecharModal('modal-export');
