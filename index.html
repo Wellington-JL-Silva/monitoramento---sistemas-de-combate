@@ -206,7 +206,31 @@
                 <div class="p-5 space-y-4">
                     <div>
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Tipo / Descrição</label>
-                        <input type="text" id="estoque-nome" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="Ex: Extintor PQS 4kg, Mangueira 1.5...">
+                        <input list="sugestoes-estoque" type="text" id="estoque-nome" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500" placeholder="Digite ou escolha da lista...">
+                        <datalist id="sugestoes-estoque">
+                            <!-- EXTINTORES -->
+                            <option value="Extintor PQS 04 kg">
+                            <option value="Extintor PQS 06 kg">
+                            <option value="Extintor PQS 08 kg">
+                            <option value="Extintor PQS 12 kg">
+                            <option value="Extintor Água (AP) 10 L">
+                            <option value="Extintor CO2 06 kg">
+                            <option value="Extintor CO2 10 kg">
+                            <option value="Extintor Pó ABC 04 kg">
+                            <option value="Extintor Carreta PQS 20 kg">
+                            <!-- PEÇAS E MATERIAIS DE REPOSIÇÃO -->
+                            <option value="Mangueira de Hidrante 1.5'' 15m">
+                            <option value="Mangueira de Hidrante 1.5'' 30m">
+                            <option value="Esguicho Regulável 1.5''">
+                            <option value="Chave Storz">
+                            <option value="Lacre Plástico para Extintor">
+                            <option value="Gatilho / Válvula Extintor">
+                            <option value="Placa de Sinalização (Extintor)">
+                            <option value="Placa de Sinalização (Hidrante)">
+                            <option value="Lâmpada de Emergência">
+                            <option value="Bateria para Iluminação de Emergência">
+                            <option value="Vidro para Abrigo de Hidrante">
+                        </datalist>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Código / Lote (Opcional)</label>
