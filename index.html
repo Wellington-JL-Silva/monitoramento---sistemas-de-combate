@@ -93,16 +93,16 @@
             </div>
         </div>
 
-        <!-- NOVO: CONTAINER DE GRÁFICOS MESAIS (PRODUTIVIDADE/TEMPO) -->
+        <!-- NOVO: CONTAINER DE GRÁFICOS DE CICLO (PRODUTIVIDADE/TEMPO) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="dashboard-charts-mensal">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Vistorias do Mês (Extintores)</h3>
+                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Vistorias em Dia (Últimos 30 Dias) - Extintores</h3>
                 <div class="relative h-48 w-full">
                     <canvas id="chartMensalExt"></canvas>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Vistorias do Mês (Abrigos)</h3>
+                <h3 class="text-sm font-bold text-gray-500 uppercase mb-2 text-center">Vistorias em Dia (Últimos 30 Dias) - Abrigos</h3>
                 <div class="relative h-48 w-full flex justify-center">
                     <canvas id="chartMensalHid"></canvas>
                 </div>
@@ -744,28 +744,24 @@
             if(document.getElementById('mini-dashboard-filial').classList.contains('hidden')) return;
 
             document.getElementById('label-mini-dash').innerText = `${filialAtual.replace('_', ' ')} - ${tipoAtual}`;
-
             const arrayLocal = Object.values(dadosColetados).filter(i => i.filial === filialAtual && i.tipo === tipoAtual);
-            const grid = document.getElementById('mini-charts-grid');
 
+            const grid = document.getElementById('mini-charts-grid');
             if(miniChartCondInst) { miniChartCondInst.destroy(); miniChartCondInst = null; }
             if(miniChartManomInst) { miniChartManomInst.destroy(); miniChartManomInst = null; }
             if(miniChartValInst) { miniChartValInst.destroy(); miniChartValInst = null; }
             if(miniChartSinalInst) { miniChartSinalInst.destroy(); miniChartSinalInst = null; }
-            if(miniChartMensalInst) { miniChartMensalInst.destroy(); miniChartMensalInst = null; } // Limpa o novo gráfico mensal local
+            if(miniChartMensalInst) { miniChartMensalInst.destroy(); miniChartMensalInst = null; }
             if(dashChartInstances['filial_esg']) { dashChartInstances['filial_esg'].destroy(); dashChartInstances['filial_esg'] = null; }
             if(dashChartInstances['filial_mang']) { dashChartInstances['filial_mang'].destroy(); dashChartInstances['filial_mang'] = null; }
             if(dashChartInstances['filial_sinal']) { dashChartInstances['filial_sinal'].destroy(); dashChartInstances['filial_sinal'] = null; }
             if(dashChartInstances['filial_cond']) { dashChartInstances['filial_cond'].destroy(); dashChartInstances['filial_cond'] = null; }
 
             grid.innerHTML = '';
-            
-            const hoje = new Date(); 
-            const mesAtual = hoje.getMonth() + 1; // getMonth é 0-indexed (0 a 11)
-            const anoAtual = hoje.getFullYear();
+
+            const hoje = new Date();
             hoje.setHours(0,0,0,0);
 
-            // Objeto de dados para contabilizar Vistorias do Mês Atual
             let progMensal = { v: 0, p: 0, AP: {v:0, p:0}, PQS: {v:0, p:0}, CO2: {v:0, p:0}, ESPUMA: {v:0, p:0}, ABC: {v:0, p:0} };
 
             const desenharMiniPizza = (ctxId, dataOk, dataNc, colorNc) => {
@@ -776,30 +772,26 @@
                 return new Chart(ctx, { type: 'doughnut', data: { labels: ['OK', 'NC'], datasets: [{ data: [dataOk, dataNc], backgroundColor: ['#00B050', colorNc], borderWidth: 2, borderColor: '#ffffff' }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } });
             };
 
-            // Reconstrói a área visual baseada no equipamento escolhido
             if (tipoAtual === 'EXTINTOR') {
                 grid.className = "grid grid-cols-2 md:grid-cols-4 gap-4";
                 grid.innerHTML = `
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="miniChartCond"></canvas></div>
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="miniChartManom"></canvas></div>
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="miniChartValidade"></canvas></div>
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
-                    
-                    <!-- NOVO: PROGRESSO MENSAL EXTINTORES DA FILIAL -->
-                    <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
-                        <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Progresso de Vistorias do Mês</h4>
-                        <div class="relative h-32 w-full"><canvas id="miniChartProgMensal"></canvas></div>
-                    </div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição</span><canvas id="miniChartCond"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Manômetro</span><canvas id="miniChartManom"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Validade</span><canvas id="miniChartValidade"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+                <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
+                    <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Vistorias em Dia (Últimos 30 Dias)</h4>
+                    <div class="relative h-32 w-full"><canvas id="miniChartProgMensal"></canvas></div>
+                </div>
                 `;
-                
+
                 let stats = { cond: { ok: 0, nc: 0 }, manom: { ok: 0, nc: 0 }, val: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
-                
+
                 arrayLocal.forEach(item => {
-                    // Status de Defeitos
                     if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
                     if(item.manometro === 'OK') stats.manom.ok++; else if(item.manometro === 'NC') stats.manom.nc++;
                     if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
-                    
+
                     let isExpired = false;
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
@@ -807,17 +799,20 @@
                     }
                     if(isExpired) stats.val.nc++; else if(item.manutencao && item.manutencao.trim() !== "") stats.val.ok++;
 
-                    // Progresso do Mês Atual
+                    // NOVO: Cálculo por Janela Rotativa (30 Dias)
                     let isVistoriado = false;
                     if (item.vistoria && item.vistoria.includes('/')) {
                         const p = item.vistoria.split('/');
-                        if (p.length === 3 && parseInt(p[1], 10) === mesAtual && parseInt(p[2], 10) === anoAtual) {
-                            isVistoriado = true;
+                        if (p.length === 3) {
+                            const dataVistoria = new Date(p[2], p[1]-1, p[0]);
+                            const diffTime = hoje - dataVistoria;
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            if (diffDays <= 30) isVistoriado = true;
                         }
                     }
 
                     let t = (item.tipo_extintor || '').toUpperCase();
-                    let key = 'PQS'; // Padrão
+                    let key = 'PQS';
                     if (t.includes('AP') || t.includes('ÁGUA') || t.includes('AGUA')) key = 'AP';
                     else if (t.includes('CO2')) key = 'CO2';
                     else if (t.includes('ESPUMA')) key = 'ESPUMA';
@@ -831,14 +826,13 @@
                 miniChartValInst = desenharMiniPizza('miniChartValidade', stats.val.ok, stats.val.nc, '#C00000');
                 miniChartSinalInst = desenharMiniPizza('miniChartSinal', stats.sinal.ok, stats.sinal.nc, '#F4B084');
 
-                // Desenha Gráfico de Barras Empilhado (Progresso Mensal de Extintores da Filial)
                 miniChartMensalInst = new Chart(document.getElementById('miniChartProgMensal').getContext('2d'), {
                     type: 'bar',
                     data: {
                         labels: ['Água', 'PQS', 'CO2', 'Espuma', 'ABC'],
                         datasets: [
-                            { label: 'Vistoriados', data: [progMensal.AP.v, progMensal.PQS.v, progMensal.CO2.v, progMensal.ESPUMA.v, progMensal.ABC.v], backgroundColor: ['#92D050', '#00B050', '#006100', '#2E8B57', '#7CFC00'] },
-                            { label: 'Pendentes', data: [progMensal.AP.p, progMensal.PQS.p, progMensal.CO2.p, progMensal.ESPUMA.p, progMensal.ABC.p], backgroundColor: '#FF0000' }
+                            { label: 'Em Dia (30d)', data: [progMensal.AP.v, progMensal.PQS.v, progMensal.CO2.v, progMensal.ESPUMA.v, progMensal.ABC.v], backgroundColor: ['#92D050', '#00B050', '#006100', '#2E8B57', '#7CFC00'] },
+                            { label: 'Vencidas (>30d)', data: [progMensal.AP.p, progMensal.PQS.p, progMensal.CO2.p, progMensal.ESPUMA.p, progMensal.ABC.p], backgroundColor: '#FF0000' }
                         ]
                     },
                     options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
@@ -847,28 +841,30 @@
             } else if (tipoAtual === 'HIDRANTE') {
                 grid.className = "grid grid-cols-3 gap-4";
                 grid.innerHTML = `
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho<br/>Chave</span><canvas id="miniChartEsg"></canvas></div>
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="miniChartMang"></canvas></div>
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
-                    
-                    <!-- NOVO: PROGRESSO MENSAL HIDRANTES DA FILIAL -->
-                    <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
-                        <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Progresso de Vistorias do Mês</h4>
-                        <div class="relative h-32 w-full flex justify-center"><canvas id="miniChartProgMensal"></canvas></div>
-                    </div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Esguicho<br/>Chave</span><canvas id="miniChartEsg"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Mangueira</span><canvas id="miniChartMang"></canvas></div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Sinalização</span><canvas id="miniChartSinal"></canvas></div>
+                <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
+                    <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Vistorias em Dia (Últimos 30 Dias)</h4>
+                    <div class="relative h-32 w-full flex justify-center"><canvas id="miniChartProgMensal"></canvas></div>
+                </div>
                 `;
+
                 let stats = { esg: { ok: 0, nc: 0 }, mang: { ok: 0, nc: 0 }, sinal: { ok: 0, nc: 0 } };
-                
+
                 arrayLocal.forEach(item => {
                     if(item.esguicho === 'OK') stats.esg.ok++; else if(item.esguicho === 'NC') stats.esg.nc++;
                     if(item.mangueira === 'OK') stats.mang.ok++; else if(item.mangueira === 'NC') stats.mang.nc++;
                     if(item.sinalizacao === 'OK') stats.sinal.ok++; else if(item.sinalizacao === 'NC') stats.sinal.nc++;
-                    
+
                     let isVistoriado = false;
                     if (item.vistoria && item.vistoria.includes('/')) {
                         const p = item.vistoria.split('/');
-                        if (p.length === 3 && parseInt(p[1], 10) === mesAtual && parseInt(p[2], 10) === anoAtual) {
-                            isVistoriado = true;
+                        if (p.length === 3) {
+                            const dataVistoria = new Date(p[2], p[1]-1, p[0]);
+                            const diffTime = hoje - dataVistoria;
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            if (diffDays <= 30) isVistoriado = true;
                         }
                     }
                     if(isVistoriado) progMensal.v++; else progMensal.p++;
@@ -878,43 +874,45 @@
                 dashChartInstances['filial_mang'] = desenharMiniPizza('miniChartMang', stats.mang.ok, stats.mang.nc, '#ED7D31');
                 dashChartInstances['filial_sinal'] = desenharMiniPizza('miniChartSinal', stats.sinal.ok, stats.sinal.nc, '#F4B084');
 
-                // Desenha Gráfico Rosca (Progresso Mensal Hidrantes da Filial)
                 miniChartMensalInst = new Chart(document.getElementById('miniChartProgMensal').getContext('2d'), {
                     type: 'doughnut',
-                    data: { labels: ['Vistoriados', 'Pendentes'], datasets: [{ data: [progMensal.v, progMensal.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
+                    data: { labels: ['Em Dia (30d)', 'Vencidas (>30d)'], datasets: [{ data: [progMensal.v, progMensal.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
                     options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
                 });
 
-            } else { // OUTROS (Iluminação, Alarmes, etc)
+            } else { 
                 grid.className = "grid grid-cols-1 gap-4";
                 grid.innerHTML = `
-                    <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="miniChartCond"></canvas></div>
-                    
-                    <!-- NOVO: PROGRESSO MENSAL OUTROS DA FILIAL -->
-                    <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
-                        <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Progresso de Vistorias do Mês</h4>
-                        <div class="relative h-32 w-full flex justify-center"><canvas id="miniChartProgMensal"></canvas></div>
-                    </div>
+                <div class="relative h-28 w-full flex flex-col items-center"><span class="text-[10px] font-bold mb-1 text-gray-400 uppercase text-center leading-tight">Condição Geral</span><canvas id="miniChartCond"></canvas></div>
+                <div class="col-span-full border-t border-gray-200 mt-2 pt-4">
+                    <h4 class="text-[10px] font-bold text-center text-gray-500 mb-2 uppercase">Vistorias em Dia (Últimos 30 Dias)</h4>
+                    <div class="relative h-32 w-full flex justify-center"><canvas id="miniChartProgMensal"></canvas></div>
+                </div>
                 `;
+
                 let stats = { cond: { ok: 0, nc: 0 } };
+
                 arrayLocal.forEach(item => {
                     if(item.condicao === 'OK') stats.cond.ok++; else if(item.condicao === 'NC') stats.cond.nc++;
-                    
+
                     let isVistoriado = false;
                     if (item.vistoria && item.vistoria.includes('/')) {
                         const p = item.vistoria.split('/');
-                        if (p.length === 3 && parseInt(p[1], 10) === mesAtual && parseInt(p[2], 10) === anoAtual) {
-                            isVistoriado = true;
+                        if (p.length === 3) {
+                            const dataVistoria = new Date(p[2], p[1]-1, p[0]);
+                            const diffTime = hoje - dataVistoria;
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            if (diffDays <= 30) isVistoriado = true;
                         }
                     }
                     if(isVistoriado) progMensal.v++; else progMensal.p++;
                 });
 
                 dashChartInstances['filial_cond'] = desenharMiniPizza('miniChartCond', stats.cond.ok, stats.cond.nc, '#FF0000');
-                
+
                 miniChartMensalInst = new Chart(document.getElementById('miniChartProgMensal').getContext('2d'), {
                     type: 'doughnut',
-                    data: { labels: ['Vistoriados', 'Pendentes'], datasets: [{ data: [progMensal.v, progMensal.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
+                    data: { labels: ['Em Dia (30d)', 'Vencidas (>30d)'], datasets: [{ data: [progMensal.v, progMensal.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
                     options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
                 });
             }
@@ -2030,33 +2028,26 @@
         }
 
         function renderizarGraficos(dados) {
-            // Conta os Status para o Gráfico de Barras de Saúde
             let totalOK = 0;
             let totalNC = 0;
 
-            // Contadores de Saúde (Extintores)
             let okAP = 0, okPQS = 0, okCO2 = 0, okEspuma = 0, okABC = 0, okOutros = 0;
             let ncValidade = 0, ncCondicoes = 0, ncManometro = 0, ncSinalizacao = 0;
 
             const hoje = new Date();
-            const mesAtual = hoje.getMonth() + 1;
-            const anoAtual = hoje.getFullYear();
             hoje.setHours(0,0,0,0);
 
-            // Contadores do NOVO Gráfico de Produtividade Mensal
             let extProg = { AP: {v:0, p:0}, PQS: {v:0, p:0}, CO2: {v:0, p:0}, ESPUMA: {v:0, p:0}, ABC: {v:0, p:0} };
             let hidProg = { v: 0, p: 0 };
 
             dados.forEach(item => {
-                // --- 1. Lógica da Saúde (Defeitos OK vs NC) ---
                 let isNC = false;
-
                 if (item.tipo === 'EXTINTOR') {
                     let isExpired = false;
                     if (item.manutencao && item.manutencao.includes('/')) {
                         const p = item.manutencao.split('/');
                         if (p.length === 3) {
-                            const dataM = new Date(p[2], p[1] - 1, p[0]);
+                            const dataM = new Date(p[2], p[1] - 1, p[0]); // Correção silenciosa mantida
                             if (dataM < hoje) isExpired = true;
                         }
                     }
@@ -2090,32 +2081,34 @@
 
                 if (isNC) totalNC++; else totalOK++;
 
-                // --- 2. Lógica de Produtividade Mensal (Foi vistoriado neste mês/ano?) ---
+                // --- 2. Lógica de Produtividade Mensal (Ciclo Rotativo de 30 Dias) ---
                 let isVistoriado = false;
                 if (item.vistoria && item.vistoria.includes('/')) {
                     const pVist = item.vistoria.split('/');
-                    if (pVist.length === 3 && parseInt(pVist[1], 10) === mesAtual && parseInt(pVist[2], 10) === anoAtual) {
-                        isVistoriado = true;
+                    if (pVist.length === 3) {
+                        const dataVistoria = new Date(pVist[2], pVist[1] - 1, pVist[0]); // Correção silenciosa mantida
+                        const diffTime = hoje - dataVistoria;
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays <= 30) isVistoriado = true;
                     }
                 }
 
                 if (item.tipo === 'EXTINTOR') {
                     let tipoExt = item.tipo_extintor ? item.tipo_extintor.toUpperCase() : '';
-                    let key = 'PQS'; // O "Outros/Vazio" assume o PQS por segurança na barra agrupada
+                    let key = 'PQS'; 
                     if (tipoExt.includes('AP') || tipoExt.includes('ÁGUA') || tipoExt.includes('AGUA')) key = 'AP';
                     else if (tipoExt.includes('CO2')) key = 'CO2';
                     else if (tipoExt.includes('ESPUMA')) key = 'ESPUMA';
                     else if (tipoExt.includes('ABC')) key = 'ABC';
-                    
+
                     if (isVistoriado) extProg[key].v++; else extProg[key].p++;
                 } else if (item.tipo === 'HIDRANTE') {
                     if (isVistoriado) hidProg.v++; else hidProg.p++;
                 }
             });
 
-            // GERAÇÃO: Gráfico 1 - Status de Saúde (Barra Global)
             const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-            if (chartStatusInstancia) chartStatusInstancia.destroy(); 
+            if (chartStatusInstancia) chartStatusInstancia.destroy();
             chartStatusInstancia = new Chart(ctxStatus, {
                 type: 'bar',
                 data: {
@@ -2123,17 +2116,17 @@
                     datasets: [{
                         label: 'Equipamentos',
                         data: [totalOK, totalNC],
-                        backgroundColor: ['#00B050', '#FF0000'], 
+                        backgroundColor: ['#00B050', '#FF0000'],
                         borderRadius: 5
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
-            // GERAÇÃO: Gráfico 2 - Saúde Detalhada (Pizza de Extintores)
             const ctxTipos = document.getElementById('chartTipos').getContext('2d');
             if (chartTiposInstancia) chartTiposInstancia.destroy();
             const labelsPizza = []; const dataPizza = []; const colorsPizza = [];
+
             if (okAP > 0) { labelsPizza.push('OK - Água'); dataPizza.push(okAP); colorsPizza.push('#92D050'); }
             if (okPQS > 0) { labelsPizza.push('OK - Pó (PQS)'); dataPizza.push(okPQS); colorsPizza.push('#00B050'); }
             if (okCO2 > 0) { labelsPizza.push('OK - CO2'); dataPizza.push(okCO2); colorsPizza.push('#005e20'); }
@@ -2152,7 +2145,6 @@
                 options: { responsive: true, maintainAspectRatio: false, cutout: '55%', plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } } }
             });
 
-            // GERAÇÃO: Gráfico 3 (NOVO) - Produtividade Mensal Extintores (Barras Empilhadas)
             const ctxMensalExt = document.getElementById('chartMensalExt').getContext('2d');
             if (chartMensalExtInstancia) chartMensalExtInstancia.destroy();
             chartMensalExtInstancia = new Chart(ctxMensalExt, {
@@ -2160,8 +2152,8 @@
                 data: {
                     labels: ['Água', 'PQS', 'CO2', 'Espuma', 'ABC'],
                     datasets: [
-                        { label: 'Vistoriados', data: [extProg.AP.v, extProg.PQS.v, extProg.CO2.v, extProg.ESPUMA.v, extProg.ABC.v], backgroundColor: ['#92D050', '#00B050', '#005e20', '#2e8b57', '#7cfc00'] },
-                        { label: 'Pendentes', data: [extProg.AP.p, extProg.PQS.p, extProg.CO2.p, extProg.ESPUMA.p, extProg.ABC.p], backgroundColor: '#FF0000' }
+                        { label: 'Em Dia (30d)', data: [extProg.AP.v, extProg.PQS.v, extProg.CO2.v, extProg.ESPUMA.v, extProg.ABC.v], backgroundColor: ['#92D050', '#00B050', '#005e20', '#2e8b57', '#7cfc00'] },
+                        { label: 'Vencidas (>30d)', data: [extProg.AP.p, extProg.PQS.p, extProg.CO2.p, extProg.ESPUMA.p, extProg.ABC.p], backgroundColor: '#FF0000' }
                     ]
                 },
                 options: {
@@ -2171,12 +2163,11 @@
                 }
             });
 
-            // GERAÇÃO: Gráfico 4 (NOVO) - Produtividade Mensal Abrigos (Rosca Verde Marinho / Vermelho)
             const ctxMensalHid = document.getElementById('chartMensalHid').getContext('2d');
             if (chartMensalHidInstancia) chartMensalHidInstancia.destroy();
             chartMensalHidInstancia = new Chart(ctxMensalHid, {
                 type: 'doughnut',
-                data: { labels: ['Vistoriados', 'Pendentes'], datasets: [{ data: [hidProg.v, hidProg.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
+                data: { labels: ['Em Dia (30d)', 'Vencidas (>30d)'], datasets: [{ data: [hidProg.v, hidProg.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
                 options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
             });
         }
