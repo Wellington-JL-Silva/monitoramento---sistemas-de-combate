@@ -269,6 +269,16 @@
         // Banco de Dados Local da Coleta
         let dadosColetados = {};
 
+        // NOVO: Função para salvar no armazenamento interno do celular (LocalStorage)
+        function salvarBackupLocal() {
+            const backup = {
+                timestamp: Date.now(),
+                dataUltimaEdicao: new Date().toLocaleString('pt-BR'),
+                dados: dadosColetados
+            };
+            localStorage.setItem('sgi_emergencia_backup', JSON.stringify(backup));
+        }
+
         // -----------------------------------------
         // ORDENAÇÃO GLOBAL (MASTER DATA E VISUAL)
         // -----------------------------------------
@@ -304,53 +314,85 @@
         };
 
         async function inicializarApp() {
+            let jsonFiles = [];
+            let urlMaisRecente = '';
+
+            // 1. TENTA BUSCAR DA NUVEM (GITHUB)
             try {
                 const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
                 const responseCat = await fetch(repoApiUrl);
-                
-                if (!responseCat.ok) throw new Error('Falha ao acessar o repositório no GitHub');
-                const files = await responseCat.json();
-                
-                const jsonFiles = files
-                    .filter(f => f.name.endsWith('.json'))
-                    .map(f => {
-                        const match = f.name.match(/(\d{4}-\d{2}-\d{2})/);
-                        const dataISO = match ? match[1] : '1900-01-01';
-                        const origem = f.name.toLowerCase().includes('inventario') ? 'Excel' : 'App Mobile';
-                        return { ...f, dataISO, origem };
-                    });
-
-                jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
-
-                const selectHist = document.getElementById('select-historico');
-                
-                if (jsonFiles.length > 0) {
-                    selectHist.innerHTML = '';
-                    jsonFiles.forEach((arq, index) => {
-                        const opt = document.createElement('option');
-                        opt.value = arq.download_url;
-                        
-                        let dataBR = arq.dataISO;
-                        if (arq.dataISO !== '1900-01-01') {
-                            const partes = arq.dataISO.split('-');
-                            dataBR = `${partes[2]}/${partes[1]}/${partes[0]}`;
-                        }
-                        
-                        opt.textContent = `${dataBR} - Origem: ${arq.origem}`;
-                        if (index === 0) opt.selected = true;
-                        
-                        selectHist.appendChild(opt);
-                    });
-                    
-                    selectHist.classList.remove('hidden');
-                    await carregarDados(jsonFiles[0].download_url);
-                } else {
-                    throw new Error('Nenhum arquivo JSON encontrado no repositório.');
+                if (responseCat.ok) {
+                    const files = await responseCat.json();
+                    jsonFiles = files
+                        .filter(f => f.name.endsWith('.json'))
+                        .map(f => {
+                            const match = f.name.match(/(\d{4}-\d{2}-\d{2})/);
+                            const dataISO = match ? match[1] : '1900-01-01';
+                            const origem = f.name.toLowerCase().includes('inventario') ? 'Excel' : 'App Mobile';
+                            return { ...f, dataISO, origem };
+                        });
+                    jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
                 }
-
             } catch (error) {
-                console.warn(error);
-                alert("Nenhum arquivo de backup foi encontrado ou houve falha na rede. O sistema iniciará vazio.");
+                console.warn("Sem conexão com GitHub ou erro na API:", error);
+            }
+
+            const selectHist = document.getElementById('select-historico');
+            if (jsonFiles.length > 0) {
+                selectHist.innerHTML = '';
+                jsonFiles.forEach((arq, index) => {
+                    const opt = document.createElement('option');
+                    opt.value = arq.download_url;
+                    let dataBR = arq.dataISO;
+                    if (arq.dataISO !== '1900-01-01') {
+                        const partes = arq.dataISO.split('-');
+                        dataBR = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                    }
+                    opt.textContent = `${dataBR} - Origem: ${arq.origem}`;
+                    if (index === 0) opt.selected = true;
+                    selectHist.appendChild(opt);
+                });
+                selectHist.classList.remove('hidden');
+                urlMaisRecente = jsonFiles[0].download_url;
+            }
+
+            // 2. O JUIZ (COMPARA NUVEM VS LOCAL)
+            const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
+            
+            if (backupLocalStr) {
+                const backupLocal = JSON.parse(backupLocalStr);
+                const dataLocal = backupLocal.dataUltimaEdicao; // ex: "05/05/2026, 14:30:00"
+
+                if (jsonFiles.length > 0) {
+                    // Tem na nuvem e tem no celular. Pergunta ao usuário qual priorizar.
+                    const msg = `Encontramos um backup recente não sincronizado no seu aparelho!\n(Salvo em: ${dataLocal})\n\n[OK] RESTAURAR DO APARELHO\n[CANCELAR] BAIXAR DA NUVEM (GitHub)`;
+                    if (confirm(msg)) {
+                        dadosColetados = backupLocal.dados || {};
+                        reordenarBaseDeDados();
+                        iniciarInterfaceVazia();
+                        mostrarToast(`Backup Local Restaurado com sucesso!`);
+                        return; // Finaliza a inicialização aqui
+                    }
+                } else {
+                    // Sem internet/Nuvem, mas tem o backup local.
+                    dadosColetados = backupLocal.dados || {};
+                    reordenarBaseDeDados();
+                    iniciarInterfaceVazia();
+                    mostrarToast(`Modo Offline: Backup Local Restaurado!`);
+                    return; // Finaliza a inicialização aqui
+                }
+            }
+
+            // 3. SE ESCOLHEU NUVEM OU NÃO TEM LOCAL
+            if (urlMaisRecente) {
+                try {
+                    await carregarDados(urlMaisRecente);
+                } catch(e) {
+                    alert("Erro ao carregar os dados da nuvem.");
+                    iniciarInterfaceVazia();
+                }
+            } else {
+                alert("Nenhum backup encontrado na nuvem ou no aparelho. O sistema iniciará vazio.");
                 iniciarInterfaceVazia();
             }
         }
@@ -826,7 +868,9 @@
                 
                 fecharModal('modal-vistoria');
                 renderizarGrid();
-                mostrarToast(`${idEquipamentoAtivo} Excluído!`);
+                
+                salvarBackupLocal(); // NOVO: Atualiza o backup do celular
+                mostrarToast(`${idEquipamentoAtivo} Excluído do dispositivo!`);
             }
         }
 
@@ -1052,6 +1096,9 @@
                     renderizarDashMiniGraficos(filialAtual, tipoAtual === 'EXTINTOR' || tipoAtual === 'HIDRANTE' ? tipoAtual : 'OUTROS');
                 }
             }
+            
+            salvarBackupLocal(); // NOVO: Salva os dados no celular imediatamente
+            mostrarToast("Vistoria salva no dispositivo!"); // ATUALIZADO
         }
 
         // -----------------------------------------
@@ -1117,7 +1164,9 @@
                     renderizarGrid();
                     document.getElementById('contador-export').innerText = Object.keys(dadosColetados).length;
                     
-                    mostrarToast(`${importados} Itens importados e grade limpa com sucesso!`);
+                    salvarBackupLocal(); // NOVO: Salva os dados importados no celular
+                    mostrarToast(`${importados} Itens importados para o dispositivo!`);
+                    
                     event.target.value = '';
                     
                     atualizarDashboard(); 
@@ -1457,9 +1506,7 @@
 
         function exportarJSON(metodo) {
             reordenarBaseDeDados();
-
             const arrayFinal = Object.values(dadosColetados);
-            
             if (arrayFinal.length === 0) {
                 alert("Nenhum dado foi coletado ainda. Vistorie ao menos um equipamento.");
                 return;
@@ -1468,16 +1515,18 @@
             const stringJSON = JSON.stringify(arrayFinal, null, 2);
             const d = new Date();
             const dataStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-            const nomeBase = `coleta_vistoria_AL_Industrial_${dataStr}`;
+            const horaStr = `${d.getHours().toString().padStart(2,'0')}h${d.getMinutes().toString().padStart(2,'0')}`; // NOVO: Hora
+            
+            const nomeBase = `coleta_vistoria_AL_Industrial_${dataStr}_${horaStr}`; // NOVO: Nome atualizado
 
             if (metodo === 'copiar') {
                 copiarParaAreaTransferencia(stringJSON);
-            } 
+            }
             else if (metodo === 'json') {
                 baixarArquivo(stringJSON, `${nomeBase}.json`, 'application/json');
-            } 
+            }
             else if (metodo === 'txt') {
-                baixarArquivo(stringJSON, `JSON_da_coleta_${dataStr}.txt`, 'text/plain');
+                baixarArquivo(stringJSON, `JSON_da_coleta_${dataStr}_${horaStr}.txt`, 'text/plain');
             }
         }
 
