@@ -231,6 +231,74 @@
     </main>
 
     <!-- ========================================================================= -->
+    <!-- VIEW: COMPRAS (Lista de Necessidades) -->
+    <!-- ========================================================================= -->
+    <main id="view-compras" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b-2 border-emerald-500 pb-4 gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 uppercase tracking-wider">🛒 Lista de Compras</h2>
+                <p class="text-xs text-gray-500 mt-1">Gere pedidos automaticamente a partir dos defeitos encontrados.</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="gerarListaComprasAutomatica()" class="flex-1 sm:flex-none text-emerald-800 text-xs font-bold flex justify-center items-center gap-1 bg-emerald-100 px-3 py-2 rounded-lg border border-emerald-300 shadow-sm transition hover:bg-emerald-200">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Scan
+                </button>
+                <button onclick="abrirModalAddCompra()" class="flex-1 sm:flex-none text-slate-700 text-xs font-bold flex justify-center items-center gap-1 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-sm transition hover:bg-slate-50">
+                    + Item Manual
+                </button>
+            </div>
+        </div>
+        
+        <div id="grid-compras" class="flex flex-col gap-3">
+            <div class="text-center p-10 border-2 border-dashed border-gray-300 rounded-xl bg-white">
+                <p class="text-gray-400 font-bold">A lista de compras está vazia.</p>
+                <p class="text-xs text-gray-400 mt-2">Clique em "Auto-Scan" para varrer as não conformidades ou adicione manualmente.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+            <button onclick="exportarComprasWhatsApp()" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 hover:bg-emerald-700 transition active:scale-95">
+                <i class="fa-brands fa-whatsapp text-xl"></i> Copiar para WhatsApp
+            </button>
+        </div>
+
+        <!-- MODAL DE ADICIONAR ITEM MANUAL (COMPRAS) -->
+        <div id="modal-add-compra" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div class="bg-emerald-600 p-4 flex justify-between items-center border-b border-emerald-700">
+                    <h3 class="font-bold text-white">Adicionar à Lista</h3>
+                    <button onclick="fecharModalCompra()" class="text-white font-bold text-xl hover:text-emerald-200">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Descrição do Item</label>
+                        <input list="sugestoes-compras" id="compra-nome" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-500" placeholder="Digite ou escolha da lista...">
+                        <datalist id="sugestoes-compras">
+                            <option value="Mangueira de Hidrante 1.5'' 15m">
+                            <option value="Mangueira de Hidrante 1.5'' 30m">
+                            <option value="Esguicho Regulável 1.5''">
+                            <option value="Chave Storz">
+                            <option value="Lacre Plástico para Extintor">
+                            <option value="Placa de Sinalização (Extintor)">
+                            <option value="Placa de Sinalização (Hidrante)">
+                            <option value="Lâmpada de Emergência">
+                            <option value="Bateria para Iluminação de Emergência">
+                            <option value="Vidro para Abrigo de Hidrante">
+                            <option value="Recarga de Extintor PQS">
+                            <option value="Recarga de Extintor CO2">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Quantidade</label>
+                        <input type="number" id="compra-qtd" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-sm font-black text-slate-700 focus:outline-none focus:border-emerald-500 text-center" value="1" min="1">
+                    </div>
+                    <button onclick="salvarItemCompraManual()" class="w-full bg-emerald-600 text-white font-black uppercase py-3 rounded-lg hover:bg-emerald-700 active:scale-95 transition mt-2">Salvar Item</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
     <!-- MODAL DE VISTORIA (Checklist) -->
     <!-- ========================================================================= -->
     <div id="modal-vistoria" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex-col justify-end sm:justify-center items-center">
@@ -357,7 +425,8 @@
 
         // Banco de Dados Local da Coleta
         let dadosColetados = {};
-        let dadosEstoque = []; // NOVO: Variável do banco de dados de peças/estoque
+        let dadosEstoque = [];
+        let dadosCompras = []; // NOVO: Banco de dados da lista de compras
 
         // NOVO: Função para salvar no armazenamento interno do celular (LocalStorage)
         function salvarBackupLocal() {
@@ -365,7 +434,8 @@
                 timestamp: Date.now(),
                 dataUltimaEdicao: new Date().toLocaleString('pt-BR'),
                 dados: dadosColetados,
-                estoque: dadosEstoque // NOVO: Salva o estoque no celular
+                estoque: dadosEstoque,
+                compras: dadosCompras // NOVO: Salva lista de compras
             };
             localStorage.setItem('sgi_emergencia_backup', JSON.stringify(backup));
         }
@@ -447,6 +517,7 @@
                     const backupLocal = JSON.parse(backupLocalStr);
                     dadosColetados = backupLocal.dados || {};
                     dadosEstoque = backupLocal.estoque || [];
+                    dadosCompras = backupLocal.compras || []; // NOVO
                     reordenarBaseDeDados();
                     iniciarInterfaceVazia();
                     mostrarToast(`📱 MODO LOCAL: Último save em ${backupLocal.dataUltimaEdicao}`);
@@ -536,6 +607,7 @@
             // NOVO: Inteligência de leitura (Retrocompatibilidade com formato antigo em Array)
             const arrayVistorias = Array.isArray(jsonLido) ? jsonLido : (jsonLido.vistorias || []);
             dadosEstoque = Array.isArray(jsonLido) ? [] : (jsonLido.estoque || []);
+            dadosCompras = Array.isArray(jsonLido) ? [] : (jsonLido.compras || []); // NOVO
 
             arrayVistorias.forEach(item => {
                 const filial = (item.filial || "").trim();
@@ -612,6 +684,19 @@
             </button>
             `;
             nav.appendChild(liEstoque);
+
+            // NOVO: Adiciona a aba de Compras
+            const isComprasActive = 'COMPRAS' === filialAtual;
+            const liCompras = document.createElement('li');
+            liCompras.className = "snap-center shrink-0";
+            liCompras.innerHTML = `
+            <button onclick="mudarFilial('COMPRAS')"
+            class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+            ${isComprasActive ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-transparent text-emerald-600/70 hover:text-emerald-800'}">
+            🛒 COMPRAS
+            </button>
+            `;
+            nav.appendChild(liCompras);
         }
 
         function renderizarMenuTipos() {
@@ -1041,26 +1126,36 @@
             filialAtual = novaFilial;
             renderizarMenuFiliais();
             
-            // Captura a nova view de estoque
             const viewEstoque = document.getElementById('view-estoque');
+            const viewCompras = document.getElementById('view-compras'); // NOVO
 
             if (novaFilial === 'DASHBOARD') {
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
-                if (viewEstoque) viewEstoque.classList.add('hidden'); // NOVO: Oculta o Estoque
+                if (viewEstoque) viewEstoque.classList.add('hidden');
+                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
                 document.getElementById('view-dashboard').classList.remove('hidden');
                 atualizarDashboard();
             } else if (novaFilial === 'ESTOQUE') {
-                // NOVO BLOCO: Ativa exclusivamente a tela de Estoque
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
                 document.getElementById('view-dashboard').classList.add('hidden');
-                if (viewEstoque) viewEstoque.classList.remove('hidden'); // Mostra o Estoque
-                renderizarEstoque(); // NOVO: Desenha a lista de peças ao abrir a aba
+                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
+                if (viewEstoque) viewEstoque.classList.remove('hidden');
+                renderizarEstoque();
+            } else if (novaFilial === 'COMPRAS') {
+                // NOVO BLOCO COMPRAS
+                document.getElementById('container-nav-tipos').classList.add('hidden');
+                document.getElementById('view-coleta').classList.add('hidden');
+                document.getElementById('view-dashboard').classList.add('hidden');
+                if (viewEstoque) viewEstoque.classList.add('hidden');
+                if (viewCompras) viewCompras.classList.remove('hidden');
+                if (typeof renderizarListaCompras === "function") renderizarListaCompras();
             } else {
                 document.getElementById('container-nav-tipos').classList.remove('hidden');
                 document.getElementById('view-dashboard').classList.add('hidden');
-                if (viewEstoque) viewEstoque.classList.add('hidden'); // NOVO: Oculta o Estoque
+                if (viewEstoque) viewEstoque.classList.add('hidden');
+                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
                 document.getElementById('view-coleta').classList.remove('hidden');
                 renderizarMenuTipos();
                 renderizarGrid();
@@ -1249,6 +1344,164 @@
                 renderizarEstoque();
                 mostrarToast("Peça removida!");
             }
+        }
+
+        // =========================================================================
+        // MÓDULO DE COMPRAS (Scanner, Lista e Exportação)
+        // =========================================================================
+        function renderizarListaCompras() {
+            const grid = document.getElementById('grid-compras');
+            if (!grid) return;
+            
+            if (!dadosCompras || dadosCompras.length === 0) {
+                grid.innerHTML = '<div class="text-center p-10 border-2 border-dashed border-gray-300 rounded-xl bg-white"><p class="text-gray-400 font-bold">A lista de compras está vazia.</p><p class="text-xs text-gray-400 mt-2">Clique em "Auto-Scan" para varrer as não conformidades ou adicione manualmente.</p></div>';
+                return;
+            }
+
+            let html = '';
+            dadosCompras.forEach((item, index) => {
+                html += `
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-emerald-300 transition-colors">
+                    <div class="flex-1 text-center sm:text-left">
+                        <h3 class="font-bold text-slate-800 uppercase">${item.nome}</h3>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Origem: ${item.origem || 'Manual'}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                            <button onclick="alterarQuantidadeCompra(${index}, -1)" class="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-100 font-black">-</button>
+                            <div class="w-12 h-10 flex items-center justify-center font-black text-slate-800 border-x border-gray-200">${item.quantidade}</div>
+                            <button onclick="alterarQuantidadeCompra(${index}, 1)" class="w-10 h-10 flex items-center justify-center text-green-500 hover:bg-green-100 font-black">+</button>
+                        </div>
+                        <button onclick="excluirItemCompra(${index})" class="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-gray-400 rounded-lg hover:text-red-500 hover:border-red-300 hover:bg-red-50 transition-colors shadow-sm active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>`;
+            });
+            grid.innerHTML = html;
+        }
+
+        function abrirModalAddCompra() {
+            const modal = document.getElementById('modal-add-compra');
+            if(modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.getElementById('compra-nome').value = '';
+                document.getElementById('compra-qtd').value = '1';
+            }
+        }
+
+        function fecharModalCompra() {
+            const modal = document.getElementById('modal-add-compra');
+            if(modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function salvarItemCompraManual() {
+            const nome = document.getElementById('compra-nome').value.trim();
+            const qtd = parseInt(document.getElementById('compra-qtd').value) || 1;
+            if (!nome) { alert("Digite a descrição do item."); return; }
+            
+            const index = dadosCompras.findIndex(i => i.nome.toUpperCase() === nome.toUpperCase());
+            if (index >= 0) {
+                dadosCompras[index].quantidade += qtd;
+            } else {
+                dadosCompras.push({ nome: nome.toUpperCase(), quantidade: qtd, origem: 'Manual' });
+            }
+            
+            salvarBackupLocal();
+            renderizarListaCompras();
+            fecharModalCompra();
+            mostrarToast("Item adicionado à lista de compras!");
+        }
+
+        function alterarQuantidadeCompra(index, delta) {
+            let qtd = dadosCompras[index].quantidade + delta;
+            if (qtd < 1) qtd = 1;
+            dadosCompras[index].quantidade = qtd;
+            salvarBackupLocal();
+            renderizarListaCompras();
+        }
+
+        function excluirItemCompra(index) {
+            dadosCompras.splice(index, 1);
+            salvarBackupLocal();
+            renderizarListaCompras();
+        }
+
+        function gerarListaComprasAutomatica() {
+            if(!confirm("O Auto-Scan vai varrer todas as Não Conformidades (vencidos, despressurizados, danificados) e adicionar os itens à lista de compras atual. Deseja continuar?")) return;
+            
+            const arrayDados = Object.values(dadosColetados);
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            let novosItens = [];
+            
+            const addScan = (nome, origemObj) => {
+                const desc = nome.toUpperCase();
+                let item = novosItens.find(i => i.nome === desc);
+                if (item) item.quantidade++;
+                else novosItens.push({ nome: desc, quantidade: 1, origem: 'Auto-Scan' });
+            };
+
+            arrayDados.forEach(item => {
+                if (item.tipo === 'EXTINTOR') {
+                    let isExpired = false;
+                    if (item.manutencao && item.manutencao.includes('/')) {
+                        const p = item.manutencao.split('/');
+                        if (p.length === 3 && new Date(p[2], p[1]-1, p[0]) < hoje) isExpired = true; // Correção silenciosa aplicada
+                    }
+                    if (isExpired || item.manometro === 'NC') addScan(`Recarga/Manutenção Extintor ${item.tipo_extintor || ''} ${item.capacidade || ''}`.trim(), item);
+                    if (item.condicao === 'NC') addScan(`Peça de Reposição (Gatilho/Mangueira) Extintor ${item.tipo_extintor || ''}`.trim(), item);
+                } else if (item.tipo === 'HIDRANTE') {
+                    if (item.mangueira === 'NC') addScan("Mangueira de Hidrante 1.5''", item);
+                    if (item.esguicho === 'NC') addScan("Esguicho Regulável 1.5'' ou Chave Storz", item);
+                } else if (item.tipo === 'ILUMINACAO' || item.tipo === 'ALARME' || item.tipo === 'DETECTOR') {
+                    if (item.condicao === 'NC') addScan(`Bateria ou Peça de Manutenção de ${item.tipo}`, item);
+                }
+            });
+
+            if (novosItens.length === 0) {
+                alert("Excelente! Nenhuma pendência encontrada que exija compra de materiais.");
+                return;
+            }
+
+            novosItens.forEach(nItem => {
+                let existe = dadosCompras.find(i => i.nome === nItem.nome);
+                if (existe) existe.quantidade += nItem.quantidade;
+                else dadosCompras.push(nItem);
+            });
+
+            salvarBackupLocal();
+            renderizarListaCompras();
+            mostrarToast(`${novosItens.length} tipos de itens somados pelo Auto-Scan!`);
+        }
+
+        function exportarComprasWhatsApp() {
+            if (!dadosCompras || dadosCompras.length === 0) {
+                alert("A lista de compras está vazia!"); return;
+            }
+            
+            const dataObj = new Date();
+            const dataStr = `${("0"+dataObj.getDate()).slice(-2)}/${("0"+(dataObj.getMonth()+1)).slice(-2)}/${dataObj.getFullYear()}`;
+            
+            let texto = `*🛒 SOLICITAÇÃO DE COMPRAS / MANUTENÇÃO*\n_Gerado em: ${dataStr}_\n\n`;
+            
+            dadosCompras.forEach((item, index) => {
+                texto += `🔹 ${index + 1}. [ ${item.quantidade} UN ] - ${item.nome}\n`;
+            });
+            
+            texto += `\n_Origem: App SGI Vistoria_`;
+            
+            const el = document.createElement('textarea');
+            el.value = texto;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            mostrarToast("Lista copiada! Cole no WhatsApp ou E-mail.");
         }
 
         // -----------------------------------------
@@ -1503,6 +1756,7 @@
                     // NOVO: Inteligência de leitura para importação manual (compatível com antigos e novos)
                     const arrayVistorias = Array.isArray(jsonLido) ? jsonLido : (jsonLido.vistorias || []);
                     dadosEstoque = Array.isArray(jsonLido) ? [] : (jsonLido.estoque || []);
+                    dadosCompras = Array.isArray(jsonLido) ? [] : (jsonLido.compras || []); // NOVO
 
                     arrayVistorias.forEach(item => {
                         const filial = (item.filial || "").trim();
@@ -1939,7 +2193,8 @@
             // NOVO: Empacotando Vistorias e Estoque juntos no mesmo arquivo
             const pacoteFinal = {
                 vistorias: arrayFinal,
-                estoque: dadosEstoque
+                estoque: dadosEstoque,
+                compras: dadosCompras // NOVO
             };
 
             const stringJSON = JSON.stringify(pacoteFinal, null, 2);
