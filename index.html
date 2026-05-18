@@ -343,6 +343,53 @@
     </main>
 
     <!-- ========================================================================= -->
+    <!-- TAREFA 43.2: VIEW DA CENTRAL DE E-MAILS EXECUTIVOS -->
+    <!-- ========================================================================= -->
+    <main id="view-exportacao" class="hidden flex-1 overflow-y-auto p-4 bg-gray-100 pb-20">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 border-b-2 border-blue-500 pb-4 gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 uppercase tracking-wider">✉️ E-mails Executivos</h2>
+                <p class="text-xs text-gray-500 mt-1">Gere relatórios formatados para copiar e colar diretamente no corpo do Outlook.</p>
+            </div>
+        </div>
+
+        <!-- Botões de Filtro Estratégicos -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <button onclick="if(typeof gerarEmailExtintores === 'function') gerarEmailExtintores('DIA')" class="bg-white border-2 border-blue-100 hover:border-blue-500 text-blue-800 p-4 rounded-xl shadow-sm flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-calendar-day text-2xl text-blue-500"></i>
+                <span class="text-xs font-bold uppercase tracking-wider text-center">Vistorias<br>do Dia</span>
+            </button>
+            <button onclick="if(typeof gerarEmailExtintores === 'function') gerarEmailExtintores('SEMANA')" class="bg-white border-2 border-blue-100 hover:border-blue-500 text-blue-800 p-4 rounded-xl shadow-sm flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-calendar-week text-2xl text-blue-500"></i>
+                <span class="text-xs font-bold uppercase tracking-wider text-center">Vistorias<br>da Semana</span>
+            </button>
+            <button onclick="if(typeof gerarEmailExtintores === 'function') gerarEmailExtintores('MES')" class="bg-white border-2 border-blue-100 hover:border-blue-500 text-blue-800 p-4 rounded-xl shadow-sm flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-calendar-days text-2xl text-blue-500"></i>
+                <span class="text-xs font-bold uppercase tracking-wider text-center">Vistorias<br>do Mês</span>
+            </button>
+            <button onclick="if(typeof gerarEmailExtintores === 'function') gerarEmailExtintores('SAUDE')" class="bg-white border-2 border-purple-100 hover:border-purple-500 text-purple-800 p-4 rounded-xl shadow-sm flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-notes-medical text-2xl text-purple-500"></i>
+                <span class="text-xs font-bold uppercase tracking-wider text-center">Saúde Geral<br>& Estoque</span>
+            </button>
+        </div>
+
+        <!-- Área de Prévia e Cópia -->
+        <div id="container-previa-email" class="hidden flex-col gap-4">
+            <div class="flex justify-between items-center bg-blue-50 p-3 border border-blue-200 rounded-lg shadow-sm">
+                <span class="text-xs font-black text-blue-800 uppercase tracking-widest"><i class="fa-solid fa-eye"></i> Prévia do E-mail</span>
+                <button onclick="if(typeof copiarParaAreaTransferenciaRichText === 'function') copiarParaAreaTransferenciaRichText(document.getElementById('conteudo-email-outlook').innerHTML)" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] shadow-md hover:bg-blue-700 transition active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-copy text-sm"></i> Copiar E-mail para Outlook
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-300 overflow-x-auto">
+                <div id="conteudo-email-outlook" class="w-full max-w-3xl mx-auto bg-white min-h-[300px]">
+                    <!-- O E-mail final será renderizado aqui -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================================================= -->
     <!-- MODAL DE VISTORIA (Checklist) -->
     <!-- ========================================================================= -->
     <div id="modal-vistoria" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex-col justify-end sm:justify-center items-center">
@@ -364,7 +411,11 @@
                 <!-- Campos injetados via JS dependendo do tipo -->
             </div>
 
-            <div class="mt-4 pt-4 border-t border-gray-100 flex gap-2 shrink-0">
+            <!-- TAREFA 34: Botão de acesso ao Prontuário -->
+            <button onclick="abrirHistoricoEquipamento()" class="w-full mt-3 bg-slate-800 text-white py-3 rounded-xl font-bold shadow transition-colors flex items-center justify-center gap-2 text-sm border border-slate-700 active:scale-95">
+                <i class="fa-solid fa-clock-rotate-left text-alyellow"></i> Ver Histórico Deste Equipamento
+            </button>
+            <div class="mt-3 pt-4 border-t border-gray-100 flex gap-2 shrink-0">
                 <button onclick="excluirEquipamento()" class="flex-1 bg-red-100 text-red-700 py-3 rounded-xl font-bold shadow-sm hover:bg-red-200">Excluir</button>
                 <button onclick="fecharModal('modal-vistoria')" class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold">Cancelar</button>
                 <button onclick="salvarVistoria()" class="flex-1 bg-alblue text-white py-3 rounded-xl font-bold shadow-lg">Salvar</button>
@@ -412,10 +463,90 @@
         </div>
     </div>
 
+    <!-- ========================================================================= -->
+    <!-- TAREFA 34: MODAL DO PRONTUÁRIO / MÁQUINA DO TEMPO -->
+    <!-- ========================================================================= -->
+    <div id="modal-historico-timeline" class="fixed inset-0 bg-slate-900 bg-opacity-80 z-[1] hidden flex-col justify-end sm:justify-center items-center p-2 sm:p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 flex flex-col h-[85vh] sm:h-auto sm:max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-3 shrink-0">
+                <div>
+                    <h3 id="timeline-title" class="text-xl font-black text-slate-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-alblue"></i> Prontuário</h3>
+                    <p id="timeline-subtitle" class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Carregando...</p>
+                </div>
+                <button onclick="fecharModal('modal-historico-timeline')" class="text-gray-400 hover:text-red-500 p-2 text-2xl leading-none transition-colors">&times;</button>
+            </div>
+            <div id="timeline-content" class="overflow-y-auto flex-1 pr-2 space-y-4 no-scrollbar">
+                <!-- O Javascript vai desenhar a linha do tempo aqui -->
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-xl transition-opacity duration-300 opacity-0 pointer-events-none z-50">
         Notificação
     </div>
+
+    <!-- TELA DE LOGIN BLINDADA FIREBASE -->
+    <div id="tela-login" class="fixed inset-0 bg-slate-900 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center border-t-4 border-alblue">
+            <h2 class="text-2xl font-black text-slate-800 mb-2">SGI Vistoria</h2>
+            <p class="text-xs text-slate-500 mb-6 font-bold uppercase tracking-widest">Acesso Restrito - Nuvem</p>
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Usuário ou E-mail</label>
+                    <input type="text" id="login-email" class="w-full bg-slate-50 border border-slate-300 rounded p-3 text-sm focus:outline-none focus:border-alblue text-slate-800" placeholder="Ex: wellington">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Senha</label>
+                    <input type="password" id="login-senha" class="w-full bg-slate-50 border border-slate-300 rounded p-3 text-sm focus:outline-none focus:border-alblue text-slate-800" placeholder="••••••••">
+                </div>
+                <button onclick="fazerLogin()" class="w-full bg-alblue hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-colors mt-2">
+                    Entrar no Sistema
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE SDK E INICIALIZAÇÃO -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAmLkodQw_az1NSSaliknij_i0mU85GqOE",
+            authDomain: "rondas-sst.firebaseapp.com",
+            projectId: "rondas-sst",
+            storageBucket: "rondas-sst.firebasestorage.app",
+            messagingSenderId: "78280697138",
+            appId: "1:78280697138:web:bc6e75f0560a8f59fc632b"
+        };
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('tela-login').classList.add('hidden');
+                mostrarToast("Acesso Liberado e Conectado à Nuvem!");
+            } else {
+                document.getElementById('tela-login').classList.remove('hidden');
+            }
+        });
+
+        function fazerLogin() {
+            let ident = document.getElementById('login-email').value.trim().toLowerCase();
+            const senha = document.getElementById('login-senha').value;
+            if(!ident || !senha) return;
+            if (!ident.includes('@')) ident += "@sgi.com.br";
+            auth.signInWithEmailAndPassword(ident, senha).catch(error => {
+                alert("Erro no Login: Verifique Usuário e Senha.");
+                console.error(error);
+            });
+        }
+    </script>
 
     <!-- ========================================================================= -->
     <!-- LOGICA DO APLICATIVO (JavaScript) -->
@@ -549,138 +680,87 @@
         };
 
         async function inicializarApp() {
-            let jsonFiles = [];
-            let urlMaisRecente = '';
-
             // 0. VERIFICA A CHAVE DO MODO OP (NUVEM VS LOCAL)
             const modoLeitura = localStorage.getItem('sgi_modo_leitura') || 'NUVEM';
-            
             if (modoLeitura === 'LOCAL') {
-                const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
-                if (backupLocalStr) {
-                    const backupLocal = JSON.parse(backupLocalStr);
-                    dadosColetados = backupLocal.dados || {};
-                    dadosEstoque = backupLocal.estoque || [];
-                    dadosCompras = backupLocal.compras || []; // NOVO
-                    reordenarBaseDeDados();
-                    iniciarInterfaceVazia();
-                    mostrarToast(`📱 MODO LOCAL: Último save em ${backupLocal.dataUltimaEdicao}`);
-                } else {
-                    alert("Atenção: Modo Local ativado, mas nenhum dado foi encontrado no celular. Iniciando vazio.");
-                    iniciarInterfaceVazia();
-                }
-                return; // Interrompe aqui. O aplicativo não vai procurar nada no GitHub.
+                carregarBackupLocal();
+                mostrarToast(`📱 MODO LOCAL: Operando com dados do celular.`);
+                return;
             }
 
-            // 1. BUSCA DA NUVEM (GITHUB) - SILENCIOSO
-            try {
-                const repoApiUrl = 'https://api.github.com/repos/wellington-jl-silva/monitoramento---sistemas-de-combate/contents/';
-                const responseCat = await fetch(repoApiUrl);
-                if (responseCat.ok) {
-                    const files = await responseCat.json();
-                    jsonFiles = files
-                        .filter(f => f.name.endsWith('.json'))
-                        .map(f => {
-                            const match = f.name.match(/(\d{4}-\d{2}-\d{2})/);
-                            const dataISO = match ? match[1] : '1900-01-01';
-                            const origem = f.name.toLowerCase().includes('inventario') ? 'Excel' : 'App Mobile';
-                            return { ...f, dataISO, origem };
-                        });
-                    jsonFiles.sort((a, b) => b.dataISO.localeCompare(a.dataISO));
-                }
-            } catch (error) {
-                console.warn("Sem conexão com GitHub ou erro na API:", error);
-            }
-
-            const selectHist = document.getElementById('select-historico');
-            if (jsonFiles.length > 0) {
-                selectHist.innerHTML = '';
-                jsonFiles.forEach((arq, index) => {
-                    const opt = document.createElement('option');
-                    opt.value = arq.download_url;
-                    let dataBR = arq.dataISO;
-                    if (arq.dataISO !== '1900-01-01') {
-                        const partes = arq.dataISO.split('-');
-                        dataBR = `${partes[2]}/${partes[1]}/${partes[0]}`;
-                    }
-                    opt.textContent = `${dataBR} - Origem: ${arq.origem}`;
-                    if (index === 0) opt.selected = true;
-                    selectHist.appendChild(opt);
-                });
-                selectHist.classList.remove('hidden');
-                urlMaisRecente = jsonFiles[0].download_url; // Pega sempre o mais recente da nuvem
-            }
-
-            // 2. CARREGAMENTO DA NUVEM
-            if (urlMaisRecente) {
+            // ==========================================
+            // TAREFA 35: BUSCA DA NUVEM (FIREBASE) - MURAL GLOBAL
+            // ==========================================
+            if (navigator.onLine && typeof db !== 'undefined') {
+                mostrarToast("☁️ Sincronizando com o Banco de Dados...");
                 try {
-                    await carregarDados(urlMaisRecente);
-                    mostrarToast("☁️ MODO NUVEM: Sincronizado com GitHub.");
-                } catch(e) {
-                    alert("Erro ao carregar os dados da nuvem.");
-                    iniciarInterfaceVazia();
+                    // Puxa toda a coleção de equipamentos atualizados da fábrica
+                    const snapshot = await db.collection('extintores_fabrica').get();
+                    if (!snapshot.empty) {
+                        dadosColetados = {};
+                        inventarioGrid = {};
+                        
+                        snapshot.forEach(doc => {
+                            const item = doc.data();
+                            const chave = doc.id;
+                            dadosColetados[chave] = item;
+                            
+                            // Reconstrói a grade visual (Inventário Grid)
+                            const chaveGrid = `${item.filial}_${item.tipo}`;
+                            if (!inventarioGrid[chaveGrid]) inventarioGrid[chaveGrid] = [];
+                            if (!inventarioGrid[chaveGrid].includes(item.id)) {
+                                inventarioGrid[chaveGrid].push(item.id);
+                            }
+                        });
+                        reordenarBaseDeDados();
+                        
+                        // Puxa Estoque e Compras da memória local (pois eles ainda operam offline temporariamente)
+                        const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
+                        if (backupLocalStr) {
+                            const backupLocal = JSON.parse(backupLocalStr);
+                            dadosEstoque = backupLocal.estoque || [];
+                            dadosCompras = backupLocal.compras || [];
+                        }
+                        
+                        iniciarInterfaceVazia();
+                        mostrarToast("✅ Mural Global (Firebase) Carregado!");
+                        
+                        // Oculta o seletor antigo do GitHub do cabeçalho
+                        const selectHist = document.getElementById('select-historico');
+                        if(selectHist) selectHist.classList.add('hidden');
+                    } else {
+                        console.warn("Firebase vazio. Fallback local.");
+                        carregarBackupLocal();
+                        mostrarToast("⚠️ Banco em Nuvem vazio. Mostrando cache.");
+                    }
+                } catch (error) {
+                    console.error("Erro ao buscar no Firebase:", error);
+                    carregarBackupLocal();
+                    mostrarToast("⚠️ Erro de rede. Iniciado Offline.");
                 }
             } else {
-                iniciarInterfaceVazia();
-                mostrarToast("Iniciado vazio (Sem conexão ou nuvem vazia).");
+                carregarBackupLocal();
+                mostrarToast("📱 Offline. Mostrando último cache salvo.");
             }
         }
 
-        async function carregarHistorico(urlArquivo) {
-            if (!urlArquivo) return;
-            try {
-                await carregarDados(urlArquivo);
-                const select = document.getElementById('select-historico');
-                const textoAmigavel = select.options[select.selectedIndex].text;
-                mostrarToast("Histórico carregado: " + textoAmigavel);
-            } catch (error) {
-                alert("Erro ao carregar o arquivo de histórico selecionado.");
+        function carregarBackupLocal() {
+            const backupLocalStr = localStorage.getItem('sgi_emergencia_backup');
+            if (backupLocalStr) {
+                const backupLocal = JSON.parse(backupLocalStr);
+                dadosColetados = backupLocal.dados || {};
+                dadosEstoque = backupLocal.estoque || [];
+                dadosCompras = backupLocal.compras || [];
+                reordenarBaseDeDados();
+                iniciarInterfaceVazia();
+            } else {
                 iniciarInterfaceVazia();
             }
         }
 
-        async function carregarDados(urlArquivo) {
-            const responseData = await fetch(urlArquivo);
-            if (!responseData.ok) throw new Error('Arquivo de dados não pôde ser baixado: ' + urlArquivo);
-            
-            const jsonLido = await responseData.json();
-            
-            dadosColetados = {};
-            inventarioGrid = {};
-            
-            // NOVO: Inteligência de leitura (Retrocompatibilidade com formato antigo em Array)
-            const arrayVistorias = Array.isArray(jsonLido) ? jsonLido : (jsonLido.vistorias || []);
-            dadosEstoque = Array.isArray(jsonLido) ? [] : (jsonLido.estoque || []);
-            dadosCompras = Array.isArray(jsonLido) ? [] : (jsonLido.compras || []); // NOVO
-
-            arrayVistorias.forEach(item => {
-                const filial = (item.filial || "").trim();
-                const tipo = (item.tipo || "").trim();
-                const id = (item.id || "").trim();
-
-                if (filial && tipo && id) {
-                    item.filial = filial;
-                    item.tipo = tipo;
-                    item.id = id;
-                    item.codigo = item.codigo === null || item.codigo === undefined ? "" : String(item.codigo).trim();
-                    item.tipo_extintor = item.tipo_extintor === null || item.tipo_extintor === undefined ? "" : String(item.tipo_extintor).trim().toUpperCase();
-                    item.manutencao = item.manutencao || "";
-                    item.teste_mangueira = item.teste_mangueira || "";
-                    
-                    const chave = `${filial}_${tipo}_${id}`;
-                    dadosColetados[chave] = item;
-
-                    const chaveGrid = `${filial}_${tipo}`;
-                    if (!inventarioGrid[chaveGrid]) inventarioGrid[chaveGrid] = [];
-                    if (!inventarioGrid[chaveGrid].includes(id)) {
-                        inventarioGrid[chaveGrid].push(id);
-                    }
-                }
-            });
-
-            reordenarBaseDeDados();
-            iniciarInterfaceVazia(); 
-        }
+        // Mantido vazio apenas para não quebrar chamadas antigas no HTML
+        async function carregarHistorico(urlArquivo) {}
+        async function carregarDados(urlArquivo) {}
 
         function iniciarInterfaceVazia() {
             mudarFilial('DASHBOARD');
@@ -741,6 +821,23 @@
             </button>
             `;
             nav.appendChild(liCompras);
+
+            // ==========================================
+            // TAREFA 43.1: ABA DE EXPORTAÇÃO NO MENU
+            // ==========================================
+            // O que faz: Adiciona a aba de E-mails Executivos na barra de navegação principal.
+            // Por que fiz: Cria o acesso visual e exclusivo para a nova Central de Relatórios sem poluir a tela principal.
+            const isExportarActive = 'EXPORTAR' === filialAtual;
+            const liExportar = document.createElement('li');
+            liExportar.className = "snap-center shrink-0 border-l-2 border-gray-200 ml-1 pl-1";
+            liExportar.innerHTML = `
+            <button onclick="mudarFilial('EXPORTAR')"
+            class="px-5 py-4 font-bold text-sm whitespace-nowrap border-b-4 transition-colors duration-200 
+            ${isExportarActive ? 'border-blue-500 text-blue-800 bg-blue-50' : 'border-transparent text-gray-500 hover:text-blue-700'}">
+            ✉️ EXPORTAR
+            </button>
+            `;
+            nav.appendChild(liExportar);
         }
 
         function renderizarMenuTipos() {
@@ -1146,11 +1243,39 @@
                     }
                 }
 
+                // ==========================================
+                // TAREFA 41.3: ETIQUETA VISUAL DE TROCA NO CARTÃO
+                // ==========================================
+                let infoTroca = '';
+                if (item && item.dataTroca) {
+                    infoTroca = `<span class="mt-1 bg-green-100 text-green-700 border border-green-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-sm"><i class="fa-solid fa-rotate"></i> Trocado: ${item.dataTroca}</span>`;
+                }
+
+                // ==========================================
+                // TAREFA 48.1: ALERTA VISUAL DE VENCIMENTO NO GRID
+                // ==========================================
+                // O que faz: Extrai a data de validade do equipamento, chama o cérebro matemático e desenha a etiqueta colorida no cartão.
+                // Por que fiz: O usuário bate o olho no Grid e já vê se o equipamento está a 15, 30 ou 60 dias de vencer sem precisar abri-lo.
+                let infoVencimento = '';
+                if (item) {
+                    let dataAlvo = "";
+                    if (item.tipo === 'EXTINTOR' && item.manutencao) dataAlvo = item.manutencao;
+                    else if (item.tipo === 'HIDRANTE' && item.teste_mangueira) dataAlvo = item.teste_mangueira;
+
+                    if (dataAlvo !== "") {
+                        const statusVenc = calcularStatusVencimento(dataAlvo);
+                        if (statusVenc.faixa !== 'SEM_DATA') {
+                            infoVencimento = `<span class="mt-1 px-1.5 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest shadow-sm ${statusVenc.corBg} ${statusVenc.corTexto} ${statusVenc.corBorda} flex items-center gap-1"><i class="fa-solid fa-stopwatch"></i> ${statusVenc.texto}</span>`;
+                        }
+                    }
+                }
+
                 const btn = document.createElement('button');
                 btn.className = `relative aspect-square flex flex-col items-center justify-center rounded-xl border-2 font-bold text-sm sm:text-base active:scale-95 transition-transform ${bgClass}`;
                 btn.onclick = () => abrirChecklist(id);
-                // NOVO: Adicionado infoTipo na renderização do cartão
-                btn.innerHTML = `${checkIcon} <span>${id}</span> ${infoTipo} ${infoTempo}`;
+
+                // NOVO: Adicionado infoVencimento na renderização do cartão
+                btn.innerHTML = `${checkIcon} <span>${id}</span> ${infoTipo} ${infoTempo} ${infoVencimento} ${infoTroca}`;
                 grid.appendChild(btn);
             });
         }
@@ -1164,40 +1289,56 @@
         // -----------------------------------------
         // 3. INTERAÇÕES DE NAVEGAÇÃO E GRID
         // -----------------------------------------
+        // ==========================================
+        // TAREFA 43.3: ROTEAMENTO DA ABA DE EXPORTAÇÃO
+        // ==========================================
+        // O que faz: Atualiza o roteador do App para reconhecer a nova tela de E-mails.
+        // Por que fiz: Garante que clicar em EXPORTAR oculte o Estoque/Dashboard/Rondas sem gerar conflito visual.
         function mudarFilial(novaFilial) {
             filialAtual = novaFilial;
             renderizarMenuFiliais();
-            
             const viewEstoque = document.getElementById('view-estoque');
-            const viewCompras = document.getElementById('view-compras'); // NOVO
+            const viewCompras = document.getElementById('view-compras'); 
+            const viewExportacao = document.getElementById('view-exportacao'); // NOVO
 
             if (novaFilial === 'DASHBOARD') {
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
                 if (viewEstoque) viewEstoque.classList.add('hidden');
-                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
+                if (viewCompras) viewCompras.classList.add('hidden'); 
+                if (viewExportacao) viewExportacao.classList.add('hidden');
                 document.getElementById('view-dashboard').classList.remove('hidden');
                 atualizarDashboard();
             } else if (novaFilial === 'ESTOQUE') {
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
                 document.getElementById('view-dashboard').classList.add('hidden');
-                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
+                if (viewCompras) viewCompras.classList.add('hidden'); 
+                if (viewExportacao) viewExportacao.classList.add('hidden');
                 if (viewEstoque) viewEstoque.classList.remove('hidden');
                 renderizarEstoque();
             } else if (novaFilial === 'COMPRAS') {
-                // NOVO BLOCO COMPRAS
                 document.getElementById('container-nav-tipos').classList.add('hidden');
                 document.getElementById('view-coleta').classList.add('hidden');
                 document.getElementById('view-dashboard').classList.add('hidden');
                 if (viewEstoque) viewEstoque.classList.add('hidden');
+                if (viewExportacao) viewExportacao.classList.add('hidden');
                 if (viewCompras) viewCompras.classList.remove('hidden');
                 if (typeof renderizarListaCompras === "function") renderizarListaCompras();
+            } else if (novaFilial === 'EXPORTAR') {
+                // TAREFA 43.3: Direciona para a Central de E-mails
+                document.getElementById('container-nav-tipos').classList.add('hidden');
+                document.getElementById('view-coleta').classList.add('hidden');
+                document.getElementById('view-dashboard').classList.add('hidden');
+                if (viewEstoque) viewEstoque.classList.add('hidden');
+                if (viewCompras) viewCompras.classList.add('hidden');
+                if (viewExportacao) viewExportacao.classList.remove('hidden');
             } else {
                 document.getElementById('container-nav-tipos').classList.remove('hidden');
                 document.getElementById('view-dashboard').classList.add('hidden');
                 if (viewEstoque) viewEstoque.classList.add('hidden');
-                if (viewCompras) viewCompras.classList.add('hidden'); // NOVO
+                if (viewCompras) viewCompras.classList.add('hidden'); 
+                if (viewExportacao) viewExportacao.classList.add('hidden');
                 document.getElementById('view-coleta').classList.remove('hidden');
                 renderizarMenuTipos();
                 renderizarGrid();
@@ -1255,6 +1396,42 @@
                 if (partes.length === 3) return `${partes[2]}-${partes[1]}-${partes[0]}`;
             }
             return dataFallback; 
+        }
+
+        // ==========================================
+        // TAREFA 47.1: O CÉREBRO MATEMÁTICO DE VALIDADE PREDITIVA
+        // ==========================================
+        // O que faz: Recebe a data de manutenção do equipamento, calcula os dias faltantes e classifica o risco preditivo (Cores e Textos).
+        // Por que fiz: Centralizar a regra de negócio. Se amanhã a diretoria decidir que Vermelho é 20 dias, mudamos apenas aqui e o app inteiro obedece.
+        function calcularStatusVencimento(dataVencimentoStr) {
+            if (!dataVencimentoStr || !dataVencimentoStr.includes('/')) {
+                return { dias: 9999, faixa: 'SEM_DATA', texto: 'Sem Validade', corBg: 'bg-gray-100', corTexto: 'text-gray-500', corBorda: 'border-gray-300' };
+            }
+            
+            const p = dataVencimentoStr.split('/');
+            if (p.length !== 3) return { dias: 9999, faixa: 'SEM_DATA', texto: 'Data Inválida', corBg: 'bg-gray-100', corTexto: 'text-gray-500', corBorda: 'border-gray-300' };
+
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            const dataVenc = new Date(p[2], p[1] - 1, p[0]); // Correção silenciosa mantida
+            
+            const diffTime = dataVenc - hoje;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 15) {
+                return { 
+                    dias: diffDays, 
+                    faixa: 'VERMELHO', 
+                    texto: diffDays < 0 ? `Vencido há ${Math.abs(diffDays)}d` : (diffDays === 0 ? 'Vence HOJE!' : `Vence em ${diffDays}d`), 
+                    corBg: 'bg-red-100', corTexto: 'text-red-700', corBorda: 'border-red-400' 
+                };
+            } else if (diffDays <= 30) {
+                return { dias: diffDays, faixa: 'AMARELO', texto: `Vence em ${diffDays}d`, corBg: 'bg-yellow-100', corTexto: 'text-yellow-700', corBorda: 'border-yellow-400' };
+            } else if (diffDays <= 60) {
+                return { dias: diffDays, faixa: 'VERDE', texto: `Vence em ${diffDays}d`, corBg: 'bg-emerald-100', corTexto: 'text-emerald-700', corBorda: 'border-emerald-400' };
+            } else {
+                return { dias: diffDays, faixa: 'AZUL', texto: `Vence em ${diffDays}d`, corBg: 'bg-blue-50', corTexto: 'text-blue-600', corBorda: 'border-blue-200' };
+            }
         }
 
         // =========================================================================
@@ -1667,6 +1844,84 @@
                 `;
             }
 
+            // ==========================================
+            // TAREFA 41.1 e 52.1: CHECKBOX DE TROCA COM MOTIVO DINÂMICO
+            // ==========================================
+            const isTrocado = dadosSalvos.dataTroca ? 'checked' : '';
+            const displayData = dadosSalvos.dataTroca ? `✔️ Substituído em: ${dadosSalvos.dataTroca}` : '';
+            const ocultaData = dadosSalvos.dataTroca ? '' : 'hidden';
+
+            // TAREFA 52.1: Recupera os motivos salvos na memória (ou os padrões)
+            const motivosMemoria = JSON.parse(localStorage.getItem('sgi_motivos_troca') || '["DESPRESSURIZADO", "LACRE ROMPIDO", "CASCO AMASSADO", "VENCIDO"]');
+            const optionsMotivos = motivosMemoria.map(m => `<option value="${m}">`).join('');
+
+            form.innerHTML += `
+            <div class="mt-5 mb-2 bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm hover:border-alblue transition-colors">
+            <label class="flex items-center gap-3 cursor-pointer group">
+            <input type="checkbox" id="input-trocado" class="w-6 h-6 text-alblue bg-white border-gray-300 rounded focus:ring-alblue transition-all" ${isTrocado}
+            onchange="
+            const hoje = new Date();
+            const dataStr = ('0'+hoje.getDate()).slice(-2) + '/' + ('0'+(hoje.getMonth()+1)).slice(-2) + '/' + hoje.getFullYear();
+            document.getElementById('hidden-data-troca').value = this.checked ? dataStr : '';
+            document.getElementById('visor-data-troca').innerText = this.checked ? '✔️ Substituído em: ' + dataStr : '';
+            document.getElementById('visor-data-troca').classList.toggle('hidden', !this.checked);
+
+            const boxMotivo = document.getElementById('box-motivo-troca');
+            if (boxMotivo) boxMotivo.classList.toggle('hidden', !this.checked);
+
+            salvarVistoria(true);
+            ">
+            <span class="text-sm font-black text-slate-700 uppercase tracking-wide group-hover:text-alblue transition-colors">🔄 Equipamento substituído nesta ronda?</span>
+            </label>
+            <div id="visor-data-troca" class="mt-2 text-[11px] font-black text-green-600 tracking-widest uppercase bg-green-100 p-2 rounded border border-green-200 ${ocultaData}">${displayData}</div>
+            <input type="hidden" id="hidden-data-troca" value="${dadosSalvos.dataTroca || ''}">
+
+            <div id="box-motivo-troca" class="mt-3 border-t border-slate-200 pt-3 ${ocultaData}">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Motivo da Substituição</label>
+                <input list="lista-motivos-troca" id="input-motivo-troca" value="${dadosSalvos.motivoTroca || ''}" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-700 focus:outline-none focus:border-alblue shadow-sm transition-colors" placeholder="Selecione ou digite um novo..." onchange="salvarVistoria(true)">
+                <datalist id="lista-motivos-troca">
+                    ${optionsMotivos}
+                </datalist>
+            </div>
+            </div>
+            <div class="mt-2 mb-4">
+            <p class="text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-pen-to-square text-alblue mr-1"></i> Observações Gerais (Opcional)</p>
+                <textarea id="input-observacao-geral" rows="2" class="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm font-medium text-gray-700 outline-none focus:border-alblue focus:ring-1 focus:ring-alblue placeholder-gray-400 resize-none shadow-sm transition-all" placeholder="Anote detalhes técnicos, motivos da troca ou outros desvios..." onchange="salvarVistoria(true)">${dadosSalvos.observacao_geral || ''}</textarea>
+            </div>
+            `;
+
+            // ==========================================
+            // TAREFA 39.1: FEEDBACK VISUAL DE NUVEM (RADAR VERDE - RENDERIZAÇÃO)
+            // ==========================================
+            // O que faz: Checa se a foto do extintor é um Link da nuvem. Se for, desenha uma borda verde, adiciona o selo e envolve em um hiperlink.
+            // Por que fiz: Espelha a experiência do App de Rondas, garantindo tranquilidade visual para o inspetor de que a imagem foi blindada no Google.
+            const fotoUrl = dadosSalvos.fotoUrl || "";
+            const fotoBase64 = dadosSalvos.fotoBase64 || "";
+            const fotoExibicao = fotoUrl || fotoBase64 || "";
+            const isLinkSeguro = fotoExibicao.startsWith('http');
+
+            const bordaImg = isLinkSeguro ? 'border-green-500 border-4 shadow-md' : 'border-gray-300 shadow-sm';
+            const tagNuvem = isLinkSeguro ? `<div id="tag-nuvem-extintor" class="absolute -top-3 left-4 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow-md uppercase tracking-widest"><i class="fa-solid fa-cloud-check"></i> Nuvem OK</div>` : `<div id="tag-nuvem-extintor" class="hidden absolute -top-3 left-4 bg-green-500 text-white text-[9px] font-black px-2 py-1 rounded shadow-md uppercase tracking-widest"><i class="fa-solid fa-cloud-check"></i> Nuvem OK</div>`;
+
+            form.innerHTML += `
+            <div class="mt-4 border-t pt-4 border-gray-100 shrink-0">
+                <p class="text-sm font-bold text-gray-700 mb-2"><i class="fa-solid fa-camera text-alblue mr-1"></i> Evidência Fotográfica Atual</p>
+                <div class="flex gap-2">
+                    <label for="input-foto-extintor" class="flex-1 bg-white border-2 border-dashed border-gray-300 hover:border-alblue text-gray-500 font-bold py-3 rounded-lg cursor-pointer flex flex-col items-center justify-center transition active:scale-95 shadow-sm">
+                        <i class="fa-solid fa-upload text-xl mb-1"></i> <span id="lbl-foto-extintor">Adicionar ou Trocar Foto</span>
+                        <input type="file" id="input-foto-extintor" accept="image/*" capture="environment" class="hidden" onchange="processarFotoExtintor(this)">
+                    </label>
+                </div>
+                <div id="preview-foto-extintor" class="mt-4 ${fotoExibicao ? '' : 'hidden'} text-center relative bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    ${tagNuvem}
+                    <a id="link-img-preview" href="${isLinkSeguro ? fotoExibicao : '#'}" ${isLinkSeguro ? 'target="_blank"' : ''} class="${isLinkSeguro ? 'cursor-pointer block' : 'pointer-events-none block'}">
+                        <img id="img-preview" src="${fotoExibicao}" class="max-h-40 mx-auto rounded border ${bordaImg} object-cover transition-colors">
+                    </a>
+                    <button onclick="removerFotoExtintor()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md border-2 border-white hover:bg-red-600 transition-colors"><i class="fa-solid fa-times"></i></button>
+                </div>
+            </div>
+            `;
+
             document.getElementById('modal-vistoria').classList.remove('hidden');
             document.getElementById('modal-vistoria').classList.add('flex');
 
@@ -1719,6 +1974,199 @@
             
             // NOVO: Dispara o Auto-Save ao clicar nos botões OK/NC
             salvarVistoria(true);
+        }
+
+        // ==========================================
+        // TAREFA 38.2: INJEÇÃO DO MOTOR DE UPLOAD SEGURO (RETRY)
+        // ==========================================
+        // O que faz: Cria a variável do "Freio de Mão" e a função assíncrona que tenta enviar a foto 5 vezes.
+        // Por que fiz: Elimina o risco de fotos perdidas por oscilação do 4G, padronizando a segurança corporativa no App de Extintores.
+        window.uploadsAtivos = 0;
+        async function uploadParaStorageComRetry(base64Data, caminhoStorage, maxTentativas = 5) {
+            const storage = firebase.storage();
+            for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+                try {
+                    const ref = storage.ref(caminhoStorage);
+                    await ref.putString(base64Data, 'data_url');
+                    return await ref.getDownloadURL();
+                } catch (erro) {
+                    console.warn(`[UPLOAD] Falha na tentativa ${tentativa} de ${maxTentativas}:`, erro);
+                    if (tentativa === maxTentativas) {
+                        alert(`ERRO CRÍTICO NA REDE: Falha ao subir imagem após 5 tentativas. Verifique a internet e anexe novamente.`);
+                        throw erro;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
+        }
+
+        // ==========================================
+        // TAREFA 42.1: CARIMBO DIGITAL SGI (FUSÃO DE PIXELS)
+        // ==========================================
+        // O que faz: Reduz a resolução para 600px e, se houver textos, funde uma faixa preta com a Data (Branco) e a Localização (Amarelo) direto nos pixels da foto antes de virar WebP.
+        // Por que fiz: Elimina a necessidade de apps de terceiros. A prova fotográfica ganha o selo corporativo blindado e imutável diretamente no motor do app.
+        function comprimirImagemBase99(file, callback, textoCarimbo1 = "", textoCarimbo2 = "") {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = event => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600; 
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // MÁGICA: A Injeção do Carimbo no Canvas
+                    if (textoCarimbo1 !== "" || textoCarimbo2 !== "") {
+                        const rectHeight = 45; // Altura da faixa preta
+                        
+                        // 1. Desenha a faixa preta com 60% de opacidade no fundo
+                        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                        ctx.fillRect(0, canvas.height - rectHeight, canvas.width, rectHeight);
+                        
+                        // 2. Configura a fonte e alinhamento
+                        ctx.font = "bold 14px Arial";
+                        ctx.textAlign = "left";
+                        
+                        // 3. Imprime a Linha 1 (Data e Hora) na cor Branca
+                        ctx.fillStyle = "#FFFFFF";
+                        ctx.fillText(textoCarimbo1, 10, canvas.height - 24);
+                        
+                        // 4. Imprime a Linha 2 (Extintor e Setor) na cor Amarela SGI
+                        ctx.fillStyle = "#FFCC00";
+                        ctx.fillText(textoCarimbo2, 10, canvas.height - 8);
+                    }
+
+                    let base64Comprimida = canvas.toDataURL('image/webp', 0.8);
+                    if (!base64Comprimida.startsWith('data:image/webp')) {
+                        console.warn("Navegador não suporta WebP. Usando JPEG como segurança.");
+                        base64Comprimida = canvas.toDataURL('image/jpeg', 0.6);
+                    }
+                    callback(base64Comprimida);
+                };
+            };
+        }
+
+        // ==========================================
+        // TAREFA 42.2: ALIMENTAÇÃO DO CARIMBO SGI (TIMESTAMP)
+        // ==========================================
+        // O que faz: Extrai a data/hora do sistema e o setor atual do extintor, enviando essas strings para o compressor embutir na imagem.
+        // Por que fiz: Alimenta a "impressora virtual" que criamos no passo anterior. Agora toda foto de extintor sai com data, hora e localização cravados fisicamente nos pixels.
+        function processarFotoExtintor(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0]; 
+            const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+            if (!dadosColetados[chave]) dadosColetados[chave] = { filial: filialAtual, tipo: tipoAtual, id: idEquipamentoAtivo };
+
+            mostrarToast("Comprimindo e carimbando foto... Aguarde.");
+            window.uploadsAtivos++; 
+
+            // MÁGICA DO CARIMBO: Puxando Data, Hora e Localização
+            const agora = new Date();
+            const dataFormatada = ("0" + agora.getDate()).slice(-2) + "/" + ("0" + (agora.getMonth() + 1)).slice(-2) + "/" + agora.getFullYear();
+            const horaFormatada = ("0" + agora.getHours()).slice(-2) + ":" + ("0" + agora.getMinutes()).slice(-2) + ":" + ("0" + agora.getSeconds()).slice(-2);
+            const textoCarimbo1 = `AL INDÚSTRIA - SESMT | Data: ${dataFormatada} ${horaFormatada}`;
+
+            const locInputParaCarimbo = document.getElementById('input-localizacao');
+            const localTextoCarimbo = locInputParaCarimbo && locInputParaCarimbo.value.trim() !== "" ? locInputParaCarimbo.value.trim().toUpperCase() : "SEM SETOR DEFINIDO";
+            const textoCarimbo2 = `Equipamento: ${idEquipamentoAtivo} | Setor: ${localTextoCarimbo}`;
+
+            // Invocando o Compressor já com os textos do carimbo
+            comprimirImagemBase99(file, async (base64) => {
+                // 1. Salva offline e exibe na tela instantaneamente (A miniatura já virá com o carimbo assado!)
+                dadosColetados[chave].fotoBase64 = base64;
+                salvarBackupLocal();
+                document.getElementById('preview-foto-extintor').classList.remove('hidden');
+
+                // Reseta visualmente a foto para Base64 (sem link, sem borda verde) durante o envio
+                const imgPreview = document.getElementById('img-preview');
+                if(imgPreview) {
+                    imgPreview.src = base64;
+                    imgPreview.className = "max-h-40 mx-auto rounded border border-gray-300 shadow-sm object-cover transition-colors";
+                }
+                const tagNuvem = document.getElementById('tag-nuvem-extintor');
+                if(tagNuvem) tagNuvem.classList.add('hidden');
+                const linkPreview = document.getElementById('link-img-preview');
+                if(linkPreview) {
+                    linkPreview.href = "#";
+                    linkPreview.removeAttribute("target");
+                    linkPreview.className = "pointer-events-none block";
+                }
+                const lblFoto = document.getElementById('lbl-foto-extintor');
+                if(lblFoto) lblFoto.innerText = "Enviando para a Nuvem...";
+
+                // 2. Cria as Pastas Inteligentes e Manda pro Google (Storage) via Motor Seguro
+                if (typeof firebase !== 'undefined' && typeof auth !== 'undefined' && auth.currentUser && navigator.onLine) {
+                    const dataHoje = new Date();
+                    const ano = dataHoje.getFullYear();
+                    const mes = ("0" + (dataHoje.getMonth() + 1)).slice(-2);
+                    const dia = ("0" + dataHoje.getDate()).slice(-2);
+                    
+                    // Tratamento de segurança para o nome do local (remove caracteres especiais)
+                    const locInput = document.getElementById('input-localizacao');
+                    const localTratado = locInput && locInput.value.trim() !== "" ? locInput.value.trim().toUpperCase().replace(/[^a-zA-Z0-9]/g, '_') : "SEM_LOCAL";
+
+                    // NOVA ÁRVORE DE ARQUIVOS CIRÚRGICA
+                    const pastaInteligente = `Extintores/${ano}/${filialAtual}/${mes}/${idEquipamentoAtivo}`;
+                    const nomeArquivo = `${idEquipamentoAtivo}_${localTratado}_${dia}${mes}${ano}_${Date.now()}.webp`;
+                    
+                    const caminhoCompleto = `${pastaInteligente}/${nomeArquivo}`;
+                    
+                    try {
+                        // Dispara a tentativa em laço c/ espera assíncrona
+                        const urlSegura = await uploadParaStorageComRetry(base64, caminhoCompleto);
+                        
+                        // Troca o lixo pesado do Base64 pelo Link Curto da nuvem
+                        dadosColetados[chave].fotoUrl = urlSegura;
+                        dadosColetados[chave].fotoBase64 = null;
+                        salvarBackupLocal();
+                        salvarVistoria(true); // Força gravação do texto na nuvem
+                        
+                        // A MÁGICA DA VIRADA DE CHAVE: Injeção do Feedback Verde ao Vivo na tela
+                        if(imgPreview) {
+                            imgPreview.src = urlSegura;
+                            imgPreview.className = "max-h-40 mx-auto rounded border border-green-500 border-4 shadow-md object-cover transition-colors";
+                        }
+                        if(tagNuvem) tagNuvem.classList.remove('hidden');
+                        if(linkPreview) {
+                            linkPreview.href = urlSegura;
+                            linkPreview.setAttribute("target", "_blank");
+                            linkPreview.className = "cursor-pointer block";
+                        }
+                        if(lblFoto) lblFoto.innerText = "Trocar Foto (Blindada)";
+                        
+                        mostrarToast("✅ Foto salva e blindada na Nuvem!");
+                    } catch (err) {
+                        console.error("Falha final de envio:", err);
+                        mostrarToast("⚠️ Erro de rede definitivo. Foto salva apenas offline.");
+                        if(lblFoto) lblFoto.innerText = "Adicionar ou Trocar Foto";
+                    }
+                } else {
+                    // Se estiver offline desde o começo, reseta o label
+                    if(lblFoto) lblFoto.innerText = "Adicionar ou Trocar Foto";
+                }
+                window.uploadsAtivos--; // Libera o Freio de Mão independente de sucesso ou falha
+            }, textoCarimbo1, textoCarimbo2); // <-- AQUI PASSAMOS OS TEXTOS PARA A IMPRESSORA
+            input.value = ""; // Limpa para permitir tirar outra
+        }
+
+        function removerFotoExtintor() {
+            if(confirm("Tem certeza que deseja excluir esta foto do equipamento?")) {
+                const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+                if(dadosColetados[chave]) {
+                    dadosColetados[chave].fotoBase64 = null;
+                    dadosColetados[chave].fotoUrl = null;
+                    salvarBackupLocal();
+                    salvarVistoria(true); // Atualiza nuvem sem a foto
+                }
+                document.getElementById('preview-foto-extintor').classList.add('hidden');
+                document.getElementById('img-preview').src = "";
+                mostrarToast("Evidência removida.");
+            }
         }
 
         function salvarVistoria(isSilencioso = false) {
@@ -1792,10 +2240,57 @@
                 obj.vistoria = inputVist.value.trim();
             }
 
+            // ==========================================
+            // TAREFA 41.2 e 52.2: SALVAMENTO DO CARIMBO E MOTIVO DE TROCA
+            // ==========================================
+            const inputDataTroca = document.getElementById('hidden-data-troca');
+            if (inputDataTroca) obj.dataTroca = inputDataTroca.value;
+
+            // TAREFA 52.2: Cérebro de Memorização do Motivo de Troca
+            const inputMotivoTroca = document.getElementById('input-motivo-troca');
+            if (inputMotivoTroca) {
+                obj.motivoTroca = inputMotivoTroca.value.trim().toUpperCase();
+                if (obj.motivoTroca !== "") {
+                    let motivosSalvos = JSON.parse(localStorage.getItem('sgi_motivos_troca') || '["DESPRESSURIZADO", "LACRE ROMPIDO", "CASCO AMASSADO", "VENCIDO"]');
+                    if (!motivosSalvos.includes(obj.motivoTroca)) {
+                        motivosSalvos.push(obj.motivoTroca);
+                        localStorage.setItem('sgi_motivos_troca', JSON.stringify(motivosSalvos));
+                    }
+                }
+            }
+
+            const inputObsGeral = document.getElementById('input-observacao-geral');
+            if (inputObsGeral) obj.observacao_geral = inputObsGeral.value;
+
             const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+
+            // TAREFA 33: Blindagem da Foto! Copia a foto que já existe na memória para não ser apagada
+            if (dadosColetados[chave]) {
+                if (dadosColetados[chave].fotoBase64) obj.fotoBase64 = dadosColetados[chave].fotoBase64;
+                if (dadosColetados[chave].fotoUrl) obj.fotoUrl = dadosColetados[chave].fotoUrl;
+            }
+
             dadosColetados[chave] = obj;
 
             salvarBackupLocal(); // Salva no celular imediatamente (Auto-Save)
+
+            // TAREFA 31 e 34: Dispara direto para o Mural Principal e para a Linha do Tempo
+            if (navigator.onLine && typeof db !== 'undefined') {
+                db.collection('extintores_fabrica').doc(chave).set(obj)
+                .then(() => {
+                    // TAREFA 34: Salva também uma cópia na Gaveta de Histórico Mensal deste equipamento
+                    const dataHoje = new Date();
+                    const mesAno = `${("0"+(dataHoje.getMonth()+1)).slice(-2)}-${dataHoje.getFullYear()}`;
+                    obj.salvoEm = firebase.firestore.FieldValue.serverTimestamp();
+                    obj.inspetorId = document.getElementById('login-email') ? document.getElementById('login-email').value.split('@')[0].toUpperCase() : 'INSPETOR';
+                    
+                    db.collection('extintores_fabrica').doc(chave).collection('historico_mensal').doc(mesAno).set(obj)
+                    .then(() => {
+                        if (!isSilencioso) mostrarToast(`✅ ${idEquipamentoAtivo} atualizado e arquivado no Prontuário!`);
+                    });
+                })
+                .catch(error => console.error("Erro na nuvem:", error));
+            }
 
             // NOVO: Interrompe o processo se for um salvamento silencioso
             if (isSilencioso === true) {
@@ -1817,6 +2312,103 @@
             }
             
             mostrarToast("Vistoria salva e finalizada!"); // ATUALIZADO
+        }
+
+        // ==========================================
+        // TAREFA 34: A MÁQUINA DO TEMPO (PRONTUÁRIO)
+        // ==========================================
+        function abrirHistoricoEquipamento() {
+            const chave = `${filialAtual}_${tipoAtual}_${idEquipamentoAtivo}`;
+            document.getElementById('timeline-title').innerHTML = `<i class="fa-solid fa-clock-rotate-left text-alblue"></i> Prontuário ${idEquipamentoAtivo}`;
+            document.getElementById('timeline-subtitle').innerText = "Buscando arquivos na nuvem...";
+            
+            const modal = document.getElementById('modal-historico-timeline');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = '<div class="text-center p-10 mt-10"><i class="fa-solid fa-spinner fa-spin text-4xl text-slate-300 mb-4"></i><p class="text-sm font-bold text-slate-500">Acessando arquivo morto na nuvem...</p></div>';
+
+            if (!navigator.onLine || typeof db === 'undefined') {
+                container.innerHTML = '<div class="text-center p-10 mt-10 text-red-500 font-bold"><i class="fa-solid fa-wifi mb-2 text-3xl"></i><br>Você precisa de internet para puxar o histórico.</div>';
+                return;
+            }
+
+            // Puxa a coleção "historico_mensal" que fica escondida dentro daquele extintor específico
+            db.collection('extintores_fabrica').doc(chave).collection('historico_mensal')
+            .orderBy('salvoEm', 'desc').get()
+            .then(snapshot => {
+                if (snapshot.empty) {
+                    container.innerHTML = '<div class="text-center p-10 mt-10 text-slate-500 font-bold border-2 border-dashed border-slate-300 rounded-xl"><i class="fa-solid fa-folder-open mb-2 text-3xl"></i><br>Nenhum histórico passado encontrado para este equipamento.</div>';
+                    document.getElementById('timeline-subtitle').innerText = "Histórico Vazio";
+                    return;
+                }
+
+                document.getElementById('timeline-subtitle').innerText = `${snapshot.size} Registro(s) Encontrado(s)`;
+                let html = '<div class="relative border-l-2 border-alblue ml-3 pl-4 space-y-6 pb-4 pt-2">';
+                
+                snapshot.forEach(doc => {
+                    const dados = doc.data();
+                    const mesAnoStr = doc.id; // Formato MM-YYYY (Nome do documento)
+                    const isNC = (dados.condicao === 'NC' || dados.manometro === 'NC' || dados.sinalizacao === 'NC' || dados.mangueira === 'NC' || dados.esguicho === 'NC');
+                    const corBolinha = isNC ? 'bg-red-500' : 'bg-green-500';
+                    const bordaCard = isNC ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white';
+                    
+                    let detalhesHtml = '';
+                    if (dados.tipo === 'EXTINTOR') {
+                        detalhesHtml = `
+                            <div class="grid grid-cols-2 gap-2 text-[10px] uppercase font-bold text-slate-600 mb-2 bg-white p-2 border border-slate-100 rounded">
+                                <p>Condição: <span class="${dados.condicao === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.condicao || '-'}</span></p>
+                                <p>Manômetro: <span class="${dados.manometro === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.manometro || '-'}</span></p>
+                                <p>Sinalização: <span class="${dados.sinalizacao === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.sinalizacao || '-'}</span></p>
+                                <p>Validade: <span class="text-slate-800">${dados.manutencao || '-'}</span></p>
+                            </div>
+                        `;
+                    } else if (dados.tipo === 'HIDRANTE') {
+                        detalhesHtml = `
+                            <div class="grid grid-cols-2 gap-2 text-[10px] uppercase font-bold text-slate-600 mb-2 bg-white p-2 border border-slate-100 rounded">
+                                <p>Esguicho/Ch: <span class="${dados.esguicho === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.esguicho || '-'}</span></p>
+                                <p>Mangueira: <span class="${dados.mangueira === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.mangueira || '-'}</span></p>
+                                <p>Sinalização: <span class="${dados.sinalizacao === 'OK' ? 'text-green-600' : 'text-red-600'}">${dados.sinalizacao || '-'}</span></p>
+                                <p>Teste: <span class="text-slate-800">${dados.teste_mangueira || '-'}</span></p>
+                            </div>
+                        `;
+                    }
+
+                    let fotoHtml = '';
+                    if (dados.fotoUrl || dados.fotoBase64) {
+                        const imgSrc = dados.fotoUrl || dados.fotoBase64;
+                        fotoHtml = `
+                            <div class="mt-2 text-center bg-white p-2 border border-slate-200 rounded">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase mb-2"><i class="fa-solid fa-camera text-alblue"></i> Evidência Fotográfica do Mês</p>
+                                <img src="${imgSrc}" class="h-28 w-auto mx-auto rounded border border-slate-300 shadow-sm object-cover">
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <div class="relative">
+                            <div class="absolute -left-[25px] top-1 w-5 h-5 rounded-full ${corBolinha} border-4 border-white shadow"></div>
+                            <div class="border ${bordaCard} p-3 rounded-lg shadow-sm">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-black text-slate-700 text-sm"><i class="fa-regular fa-calendar-check text-slate-400 mr-1"></i> ${mesAnoStr}</h4>
+                                    <span class="text-[9px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded shadow-sm"><i class="fa-solid fa-user-check"></i> ${dados.inspetorId || 'Inspetor'}</span>
+                                </div>
+                                ${detalhesHtml}
+                                ${dados.vistoria ? `<p class="text-[10px] text-slate-500 font-bold uppercase mt-1">Data Exata da Vistoria: ${dados.vistoria}</p>` : ''}
+                                ${fotoHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                console.error("Erro ao buscar histórico:", err);
+                container.innerHTML = '<div class="text-center p-10 mt-10 text-red-500 font-bold">Erro ao puxar dados do servidor do Google.</div>';
+            });
         }
 
         // -----------------------------------------
@@ -1888,8 +2480,26 @@
                     document.getElementById('contador-export').innerText = Object.keys(dadosColetados).length;
                     
                     salvarBackupLocal(); // NOVO: Salva os dados importados no celular
-                    mostrarToast(`${importados} Itens importados para o dispositivo!`);
-                    
+
+                    // ==========================================
+                    // TAREFA 36: O CAMINHÃO DE MUDANÇA (Upload em Lote)
+                    // ==========================================
+                    if (navigator.onLine && typeof db !== 'undefined') {
+                        mostrarToast(`Enviando ${importados} equipamentos para a Nuvem... Aguarde!`);
+                        let envios = 0;
+                        Object.keys(dadosColetados).forEach(chaveItem => {
+                            db.collection('extintores_fabrica').doc(chaveItem).set(dadosColetados[chaveItem])
+                            .then(() => {
+                                envios++;
+                                if(envios === importados) {
+                                    mostrarToast(`✅ SUCESSO! Nuvem Populada com ${importados} itens!`);
+                                }
+                            }).catch(err => console.error("Erro no upload em lote:", err));
+                        });
+                    } else {
+                        mostrarToast(`${importados} Itens importados APENAS no celular!`);
+                    }
+
                     event.target.value = '';
                     
                     atualizarDashboard(); 
@@ -1905,6 +2515,80 @@
         // =========================================================================
         // 6. MOTOR DO DASHBOARD (VISÃO GERENCIAL)
         // =========================================================================
+
+        // ==========================================
+        // TAREFA 49.1: PAINEL PREDITIVO (HELPER)
+        // ==========================================
+        // O que faz: Analisa o array de dados e constrói os 4 cards coloridos e a lista suspensa de vencimentos.
+        // Por que fiz: Mantém a função do Dashboard limpa. Classifica automaticamente o grau de risco (Azul a Vermelho).
+        function gerarPainelPreditivoDashboard(arrayDados) {
+            let vAzul = 0, vVerde = 0, vAmarelo = 0, vVermelho = 0;
+            let listaVenc = [];
+
+            arrayDados.forEach(item => {
+                let dataAlvo = "";
+                if (item.tipo === 'EXTINTOR' && item.manutencao) dataAlvo = item.manutencao;
+                else if (item.tipo === 'HIDRANTE' && item.teste_mangueira) dataAlvo = item.teste_mangueira;
+
+                if (dataAlvo !== "") {
+                    const s = calcularStatusVencimento(dataAlvo);
+                    if (s.faixa === 'VERMELHO') { vVermelho++; listaVenc.push({...item, p: s}); }
+                    else if (s.faixa === 'AMARELO') { vAmarelo++; listaVenc.push({...item, p: s}); }
+                    else if (s.faixa === 'VERDE') { vVerde++; listaVenc.push({...item, p: s}); }
+                    else if (s.faixa === 'AZUL') { vAzul++; }
+                }
+            });
+
+            // Ordena do mais crítico (menor dia) para o menos crítico
+            listaVenc.sort((a,b) => a.p.dias - b.p.dias);
+
+            let htmlCards = `
+            <div class="mt-4 mb-2 flex items-center justify-between">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider"><i class="fa-solid fa-stopwatch text-alblue"></i> Vencimentos Preditivos</h3>
+            </div>
+            <div class="grid grid-cols-4 gap-2 mb-3">
+                <div class="bg-blue-50 border border-blue-200 p-2 rounded-lg text-center shadow-sm flex flex-col justify-center">
+                    <div class="text-[10px] font-bold text-blue-800">> 60 Dias</div>
+                    <div class="text-xl font-black text-blue-600">${vAzul}</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-center shadow-sm cursor-pointer active:scale-95 transition-transform flex flex-col justify-center" onclick="toggleListaVencimentos()">
+                    <div class="text-[10px] font-bold text-emerald-800">≤ 60 Dias</div>
+                    <div class="text-xl font-black text-emerald-600">${vVerde}</div>
+                </div>
+                <div class="bg-yellow-50 border border-yellow-200 p-2 rounded-lg text-center shadow-sm cursor-pointer active:scale-95 transition-transform flex flex-col justify-center" onclick="toggleListaVencimentos()">
+                    <div class="text-[10px] font-bold text-yellow-800">≤ 30 Dias</div>
+                    <div class="text-xl font-black text-yellow-600">${vAmarelo}</div>
+                </div>
+                <div class="bg-red-50 border border-red-200 p-2 rounded-lg text-center shadow-sm cursor-pointer active:scale-95 transition-transform flex flex-col justify-center" onclick="toggleListaVencimentos()">
+                    <div class="text-[10px] font-bold text-red-800">≤ 15 Dias</div>
+                    <div class="text-xl font-black text-red-600">${vVermelho}</div>
+                </div>
+            </div>
+            `;
+
+            let htmlLista = `<div id="lista-venc-global" class="hidden mb-6 bg-white border border-gray-200 rounded-xl shadow-md flex-col overflow-hidden transition-all">`;
+            if (listaVenc.length > 0) {
+                htmlLista += `<div class="bg-gray-100 p-2 border-b border-gray-200 font-bold text-gray-600 text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2">👇 Equipamentos próximos da manutenção</div>`;
+                htmlLista += `<div class="max-h-60 overflow-y-auto divide-y divide-gray-100">`;
+                listaVenc.forEach(item => {
+                    htmlLista += `
+                    <div onclick="navegarParaVencimento('${item.filial}', '${item.tipo}', '${item.id}')" class="p-3 flex items-center gap-3 hover:bg-gray-50 cursor-pointer transition-colors group">
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-gray-800 group-hover:text-alblue transition-colors">${item.id} - ${item.tipo}</div>
+                            <div class="text-[10px] text-gray-500 uppercase">${item.filial.replace('_', ' ')} ${item.localizacao ? ' | ' + item.localizacao : ''}</div>
+                        </div>
+                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded shadow-sm ${item.p.corBg} ${item.p.corTexto} border ${item.p.corBorda}">${item.p.texto}</span>
+                    </div>`;
+                });
+                htmlLista += `</div>`;
+            } else {
+                 htmlLista += `<div class="p-4 text-center text-sm text-gray-500 font-bold">Nenhum equipamento na área de risco!</div>`;
+            }
+            htmlLista += `</div>`;
+
+            return htmlCards + htmlLista;
+        }
+
         function atualizarDashboard() {
             const container = document.getElementById('dashboard-content');
             container.innerHTML = '';
@@ -2093,9 +2777,122 @@
                 ${htmlListaNC}
             </div>
             `;
+
+            // ==========================================
+            // TAREFA 54.1: MOTOR DE DESPACHO E AVALIAÇÃO DE FOTOS OFFLINE
+            // ==========================================
+            let fotosOfflineCount = 0;
+            arrayDados.forEach(item => {
+                if (item.fotoBase64 && item.fotoBase64.startsWith('data:image')) fotosOfflineCount++;
+            });
+
+            let htmlSync = '';
+            if (fotosOfflineCount > 0) {
+                htmlSync = `
+                <div class="mb-4">
+                    <button onclick="if(typeof sincronizarFotosOffline === 'function') sincronizarFotosOffline()" class="w-full bg-blue-600 animate-pulse text-white font-black py-4 rounded-xl shadow-lg border-2 border-blue-400 flex flex-col items-center justify-center gap-1 transition active:scale-95">
+                        <span class="text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Fotos Pendentes (${fotosOfflineCount})</span>
+                        <span class="text-[10px] font-normal uppercase tracking-widest text-blue-200">Toque aqui com Wi-Fi para enviar as provas para a nuvem</span>
+                    </button>
+                </div>
+                `;
+            }
             
-            container.innerHTML = htmlGlobal + htmlFiliais;
+            // TAREFA 49.2: INJEÇÃO DO PAINEL PREDITIVO NO DASHBOARD
+            const htmlPreditivo = typeof gerarPainelPreditivoDashboard === 'function' ? gerarPainelPreditivoDashboard(arrayDados) : '';
+            
+            // Injeta o botão de Sincronização Acima do Global (se houver fotos pendentes)
+            container.innerHTML = htmlSync + htmlGlobal + htmlPreditivo + htmlFiliais;
+
             renderizarGraficos(arrayDados);
+        }
+
+        // Função invocada pelo Botão Despachante
+        async function sincronizarFotosOffline() {
+            if (!navigator.onLine) {
+                alert("Você precisa estar conectado à internet para sincronizar as fotos.");
+                return;
+            }
+            if (typeof firebase === 'undefined' || typeof auth === 'undefined' || !auth.currentUser) {
+                alert("Você precisa fazer login no Firebase (Nuvem) para sincronizar.");
+                return;
+            }
+
+            const emailDono = auth.currentUser.email.split('@')[0].toUpperCase();
+            const dataHoje = new Date();
+            const ano = dataHoje.getFullYear();
+            const mes = ("0" + (dataHoje.getMonth() + 1)).slice(-2);
+            const dia = ("0" + dataHoje.getDate()).slice(-2);
+            
+            const arrayDados = Object.values(dadosColetados);
+            const itensPendentes = arrayDados.filter(item => item.fotoBase64 && item.fotoBase64.startsWith('data:image'));
+            
+            if (itensPendentes.length === 0) return;
+
+            mostrarToast(`Iniciando o envio blindado de ${itensPendentes.length} foto(s)...`);
+            
+            // Aciona o Freio de Mão de uploads
+            window.uploadsAtivos = window.uploadsAtivos ? window.uploadsAtivos + 1 : 1;
+            let enviadas = 0;
+
+            for (let i = 0; i < itensPendentes.length; i++) {
+                let item = itensPendentes[i];
+                let chave = `${item.filial}_${item.tipo}_${item.id}`;
+                
+                const localTratado = item.localizacao && item.localizacao.trim() !== "" ? item.localizacao.trim().toUpperCase().replace(/[^a-zA-Z0-9]/g, '_') : "SEM_LOCAL";
+                const pastaInteligente = `Extintores/${ano}/${item.filial}/${mes}/${item.id}`;
+                const nomeArquivo = `${item.id}_${localTratado}_${dia}${mes}${ano}_${Date.now()}_sync.webp`;
+                const caminhoCompleto = `${pastaInteligente}/${nomeArquivo}`;
+
+                try {
+                    // Reutiliza o nosso motor c/ 5 tentativas de Retry
+                    const urlSegura = await uploadParaStorageComRetry(item.fotoBase64, caminhoCompleto);
+                    
+                    // Troca o Base64 Pesado pelo Link Leve
+                    dadosColetados[chave].fotoUrl = urlSegura;
+                    dadosColetados[chave].fotoBase64 = null;
+                    
+                    // Grava na Nuvem silenciosamente
+                    await db.collection('extintores_fabrica').doc(chave).set(dadosColetados[chave]);
+                    
+                    enviadas++;
+                    mostrarToast(`Sincronizando... (${enviadas}/${itensPendentes.length})`);
+                } catch (e) {
+                    console.error(`Erro ao sincronizar foto de ${item.id}:`, e);
+                }
+            }
+
+            salvarBackupLocal();
+            atualizarDashboard(); // Recarrega a tela e some com o botão
+            window.uploadsAtivos--; // Libera o Freio de Mão
+            
+            if (enviadas === itensPendentes.length) {
+                mostrarToast(`✅ Sincronização 100% Concluída! Memória liberada.`);
+            } else {
+                mostrarToast(`⚠️ Finalizado com algumas falhas na rede. (${enviadas}/${itensPendentes.length})`);
+            }
+        }
+
+        // ==========================================
+        // TAREFA 49.2: ROTEADORES DE VENCIMENTO
+        // ==========================================
+        function toggleListaVencimentos() {
+            const lista = document.getElementById('lista-venc-global');
+            if (lista) {
+                if (lista.classList.contains('hidden')) {
+                    lista.classList.remove('hidden');
+                    lista.classList.add('flex');
+                } else {
+                    lista.classList.add('hidden');
+                    lista.classList.remove('flex');
+                }
+            }
+        }
+
+        function navegarParaVencimento(filial, tipo, id) {
+            mudarFilial(filial);
+            mudarTipo(tipo);
+            setTimeout(() => { abrirChecklist(id); }, 150);
         }
 
         // NOVO: Abre e Fecha a Lista Suspensa de NCs no Dashboard
@@ -2269,6 +3066,586 @@
                 data: { labels: ['Em Dia (30d)', 'Vencidas (>30d)'], datasets: [{ data: [hidProg.v, hidProg.p], backgroundColor: ['#008080', '#FF0000'], borderWidth: 2, borderColor: '#ffffff' }] },
                 options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
             });
+        }
+
+        // ==========================================
+        // TAREFA 44.1: FILTRO DE TEMPO INTELIGENTE (HELPER)
+        // ==========================================
+        // O que faz: Função pura que apenas analisa as datas das vistorias e devolve a lista recortada pelo período.
+        // Por que fiz: Ao dividir responsabilidades, impedimos a criação de uma função "monstro" in-testável.
+        function filtrarDadosExportacao(filtro, todosDados) {
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            
+            let arrayFiltrado = [];
+            let itensTrocados = 0;
+            let tituloEmail = "";
+            let subtituloEmail = "";
+
+            if (filtro === 'DIA') {
+                tituloEmail = "📅 RELATÓRIO DIÁRIO DE VISTORIAS DOS EQUIPAMENTOS DE COMBATE";
+                subtituloEmail = "Resumo dos equipamentos inspecionados e movimentados no dia de hoje.";
+            } else if (filtro === 'SEMANA') {
+                tituloEmail = "🗓️ FECHAMENTO SEMANAL DE VISTORIAS DOS EQUIPAMENTOS DE COMBATE";
+                subtituloEmail = "Resumo acumulado dos equipamentos avaliados nos últimos 7 dias.";
+            } else if (filtro === 'MES') {
+                tituloEmail = "📆 BALANÇO MENSAL DO CICLO DOS EQUIPAMENTOS DE COMBATE";
+                subtituloEmail = "Fechamento global das inspeções consolidadas dos últimos 30 dias.";
+            } else if (filtro === 'SAUDE') {
+                tituloEmail = "🏥 SAÚDE GERAL";
+                subtituloEmail = "Visão macro do estado da fábrica, cruzamento de estoques e demandas automáticas de compras.";
+                return { arrayFiltrado: todosDados, itensTrocados: 0, tituloEmail, subtituloEmail };
+            }
+
+            todosDados.forEach(item => {
+                if (item.vistoria && item.vistoria.includes('/')) {
+                    const p = item.vistoria.split('/');
+                    if (p.length === 3) {
+                        const dVist = new Date(p[2], p[1]-1, p[0]); // Correção silenciosa aplicada
+                        const diffDays = Math.floor((hoje - dVist) / (1000 * 60 * 60 * 24));
+                        
+                        let entraNoFiltro = false;
+                        if (filtro === 'DIA' && diffDays === 0) entraNoFiltro = true;
+                        if (filtro === 'SEMANA' && diffDays >= 0 && diffDays <= 7) entraNoFiltro = true;
+                        if (filtro === 'MES' && diffDays >= 0 && diffDays <= 30) entraNoFiltro = true;
+
+                        if (entraNoFiltro) {
+                            arrayFiltrado.push(item);
+                            if (item.dataTroca) itensTrocados++;
+                        }
+                    }
+                }
+            });
+
+            return { arrayFiltrado, itensTrocados, tituloEmail, subtituloEmail };
+        }
+
+        // ==========================================
+        // TAREFA 55.1: CABEÇALHO DINÂMICO DE FILIAIS
+        // ==========================================
+        function montarCabecalhoEmail(titulo, subtitulo, dataStr, inspetor, unidadesVistoriadas = "Todas as Filiais e Setores") {
+            return `
+            <div style="background-color: #0070C0; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; color: white;">
+                <h1 style="margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px;">${titulo}</h1>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #e0f2fe;">AL INDÚSTRIA - SESMT</p>
+            </div>
+            <div style="background-color: #f8fafc; padding: 20px; border-bottom: 2px solid #cbd5e1; font-size: 14px; color: #475569;">
+                <p style="margin: 4px 0;"><b>Data do Relatório:</b> ${dataStr}</p>
+                <p style="margin: 4px 0;"><b>Inspetor Responsável:</b> ${inspetor}</p>
+                <p style="margin: 4px 0;"><b>Unidades Mapeadas:</b> ${unidadesVistoriadas}</p>
+                <p style="margin: 12px 0 0 0; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 13px;">${subtitulo}</p>
+            </div>`;
+        }
+
+        // ==========================================
+        // TAREFA 53.1: SUPER COMPILADO DA SAÚDE GERAL (E-MAIL OUTLOOK)
+        // ==========================================
+        function montarCorpoSaude(imgStatus, imgTipos) {
+            const todosDados = Object.values(dadosColetados);
+            let vAzul = 0, vVerde = 0, vAmarelo = 0, vVermelho = 0;
+            let anomalias = {};
+
+            // Helper: Garante que os itens sejam agrupados pelo defeito para facilitar a leitura da Diretoria
+            const addAnomalia = (motivo, item) => {
+                if(!anomalias[motivo]) anomalias[motivo] = [];
+                if(!anomalias[motivo].find(i => i.id === item.id)) anomalias[motivo].push(item);
+            };
+
+            // 1. Motor de Rastreio da Fábrica
+            todosDados.forEach(item => {
+                let dataAlvo = "";
+                if (item.tipo === 'EXTINTOR' && item.manutencao) dataAlvo = item.manutencao;
+                else if (item.tipo === 'HIDRANTE' && item.teste_mangueira) dataAlvo = item.teste_mangueira;
+
+                if (dataAlvo !== "") {
+                    const s = typeof calcularStatusVencimento === 'function' ? calcularStatusVencimento(dataAlvo) : { faixa: 'SEM_DATA' };
+                    if (s.faixa === 'AZUL') vAzul++;
+                    else if (s.faixa === 'VERDE') vVerde++;
+                    else if (s.faixa === 'AMARELO') { vAmarelo++; addAnomalia('Vencimento em até 30 Dias (Atenção)', item); }
+                    else if (s.faixa === 'VERMELHO') { vVermelho++; addAnomalia('Próximos do vencimento ( menos 15 Dias)', item); }
+                }
+
+                if (item.tipo === 'EXTINTOR') {
+                    if (item.condicao === 'NC') addAnomalia('Condição do Casco / Avarias', item);
+                    if (item.manometro === 'NC') addAnomalia('Manômetro Despressurizado / Falha', item);
+                    if (item.sinalizacao === 'NC') addAnomalia('Falta de Sinalização do Extintor', item);
+                } else if (item.tipo === 'HIDRANTE') {
+                    if (item.esguicho === 'NC') addAnomalia('Esguicho ou Chave Faltando', item);
+                    if (item.mangueira === 'NC') addAnomalia('Mangueira Danificada / Ausente', item);
+                    if (item.sinalizacao === 'NC') addAnomalia('Falta de Sinalização do Abrigo', item);
+                } else {
+                    if (item.condicao === 'NC') addAnomalia('Equipamento Danificado / Inoperante', item);
+                }
+            });
+
+            let html = `<div style="padding: 20px; background-color: #ffffff;">`;
+
+            // 2. Quadro Preditivo Matemático (Usando TR e TD para não quebrar no Outlook)
+            html += `<h3 style="color: #0070C0; border-bottom: 2px solid #bae6fd; padding-bottom: 5px; margin-top: 0;">⏱️ PANORAMA PREDITIVO DE VENCIMENTOS</h3>`;
+            html += `
+            <table width="100%" cellpadding="5" cellspacing="0" border="0" style="margin-bottom: 25px; text-align: center; font-family: Arial, sans-serif;">
+                <tr>
+                    <td width="25%" valign="top">
+                        <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 8px; height: 100%;">
+                            <div style="font-size: 10px; color: #1e40af; font-weight: bold; text-transform: uppercase;">Mais de 60 Dias</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #2563eb;">${vAzul}</div>
+                        </div>
+                    </td>
+                    <td width="25%" valign="top">
+                        <div style="background-color: #dcfce7; border: 1px solid #86efac; padding: 10px; border-radius: 8px; height: 100%;">
+                            <div style="font-size: 10px; color: #166534; font-weight: bold; text-transform: uppercase;">Até 60 Dias</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #15803d;">${vVerde}</div>
+                        </div>
+                    </td>
+                    <td width="25%" valign="top">
+                        <div style="background-color: #fef9c3; border: 1px solid #fde047; padding: 10px; border-radius: 8px; height: 100%;">
+                            <div style="font-size: 10px; color: #854d0e; font-weight: bold; text-transform: uppercase;">Menos de 30 Dias</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #b45309;">${vAmarelo}</div>
+                        </div>
+                    </td>
+                    <td width="25%" valign="top">
+                        <div style="background-color: #fee2e2; border: 1px solid #fca5a5; padding: 10px; border-radius: 8px; height: 100%;">
+                            <div style="font-size: 10px; color: #991b1b; font-weight: bold; text-transform: uppercase;"><= 15 Dias (Crítico)</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #b91c1c;">${vVermelho}</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>`;
+
+            // 3. Super Compilado de Não Conformidades (Listagem Agrupada e Cartões com Fotos)
+            html += `<h3 style="color: #dc2626; border-bottom: 2px solid #fecaca; padding-bottom: 5px;">🚨 SUPER COMPILADO DE NÃO CONFORMIDADES</h3>`;
+            
+            const motivos = Object.keys(anomalias);
+            if (motivos.length === 0) {
+                 html += `<p style="font-size:14px; color:#16a34a; background-color:#f0fdf4; border: 1px solid #bbf7d0; text-align:center; padding: 20px; border-radius: 8px; font-weight: bold;">Nenhuma não conformidade ou vencimento crítico encontrado na fábrica.</p>`;
+            } else {
+                motivos.forEach(motivo => {
+                    const itens = anomalias[motivo];
+                    html += `<div style="background-color: #fef2f2; border: 1px solid #fca5a5; padding: 10px; border-radius: 8px; margin-top: 20px; margin-bottom: 10px;">
+                                <h4 style="margin: 0; color: #b91c1c; font-size: 13px; text-transform: uppercase;">📌 ${motivo} (${itens.length} ocorrência/s)</h4>
+                             </div>`;
+
+                    // A MÁGICA DOS CARTÕES: Renderiza em 2 colunas caindo perfeitamente abaixo do motivo
+                    html += `<table width="100%" cellpadding="8" cellspacing="0" border="0" style="table-layout: fixed; margin-bottom: 10px;">`;
+                    for (let i = 0; i < itens.length; i += 2) {
+                        html += `<tr>`;
+                        
+                        // Coluna 1
+                        html += `<td width="50%" valign="top" style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;">`;
+                        if (typeof gerarCartaoEmailExtintor === 'function') html += gerarCartaoEmailExtintor(itens[i]);
+                        else html += `<div style="text-align:center; font-size:11px; color:#94a3b8;">Motor Tarefa 45 Inativo</div>`;
+                        html += `</td>`;
+
+                        // Coluna 2
+                        if (i + 1 < itens.length) {
+                            html += `<td width="50%" valign="top" style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;">`;
+                            if (typeof gerarCartaoEmailExtintor === 'function') html += gerarCartaoEmailExtintor(itens[i+1]);
+                            else html += `<div style="text-align:center; font-size:11px; color:#94a3b8;">Motor Tarefa 45 Inativo</div>`;
+                            html += `</td>`;
+                        } else {
+                            html += `<td width="50%" style="border: none;"></td>`;
+                        }
+                        html += `</tr><tr><td colspan="2" height="10"></td></tr>`;
+                    }
+                    html += `</table>`;
+                });
+            }
+
+            // 4. Base Original Mantida (Gráficos Gerais e Almoxarifado)
+            html += `<h3 style="color: #0070C0; border-bottom: 2px solid #bae6fd; padding-bottom: 5px; margin-top: 30px;">📊 STATUS GERAL DA FÁBRICA</h3>`;
+            html += `<table width="100%" style="margin-bottom: 20px;"><tr>`;
+            if(imgStatus) html += `<td align="center" width="50%"><img src="${imgStatus}" style="max-width:100%; height:180px;"></td>`;
+            if(imgTipos) html += `<td align="center" width="50%"><img src="${imgTipos}" style="max-width:100%; height:180px;"></td>`;
+            html += `</tr></table>`;
+
+            html += `<h3 style="color: #d97706; border-bottom: 2px solid #fde68a; padding-bottom: 5px;">📦 SAÚDE DO ESTOQUE E LISTA DE COMPRAS</h3>`;
+            html += `<div style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 14px; color: #92400e;">Catálogo do Almoxarifado: <b>${dadosEstoque.length} itens cadastrados</b></p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #92400e;">Déficits Atuais (Lista de Compras): <b>${dadosCompras.length} pedidos pendentes</b></p>
+                     </div>`;
+
+            if (dadosCompras.length > 0) {
+                html += `<h4 style="color: #ef4444; font-size: 14px;">🚨 Itens Urgentes para a Próxima Compra:</h4>`;
+                html += `<ul style="font-size:13px; color:#475569; padding-left: 20px; line-height: 1.6;">`;
+                dadosCompras.forEach(c => {
+                    html += `<li><b>${c.quantidade} UN</b> - ${c.nome} <span style="font-size: 10px; color:#94a3b8;">(${c.origem})</span></li>`;
+                });
+                html += `</ul>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // ==========================================
+        // TAREFA 55.4A: CÉREBRO DE DESVIOS E ALERTAS COLORIDOS
+        // ==========================================
+        function montarSecaoAlertasVistorias(arrayFiltrado, itensTrocados) {
+            let alertasAmarelo = 0;
+            let alertasVermelho = 0;
+            let ncCondicao = 0, ncManometro = 0, ncSinalizacao = 0, ncMangueira = 0, ncEsguicho = 0;
+            
+            if (typeof calcularStatusVencimento === 'function') {
+                arrayFiltrado.forEach(item => {
+                    let dataAlvo = "";
+                    if (item.tipo === 'EXTINTOR' && item.manutencao) dataAlvo = item.manutencao;
+                    else if (item.tipo === 'HIDRANTE' && item.teste_mangueira) dataAlvo = item.teste_mangueira;
+
+                    if (dataAlvo !== "") {
+                        const status = calcularStatusVencimento(dataAlvo);
+                        if (status.faixa === 'VERMELHO') alertasVermelho++;
+                        else if (status.faixa === 'AMARELO') alertasAmarelo++;
+                    }
+
+                    if (item.condicao === 'NC') ncCondicao++;
+                    if (item.tipo === 'EXTINTOR') {
+                        if (item.manometro === 'NC') ncManometro++;
+                        if (item.sinalizacao === 'NC') ncSinalizacao++;
+                    } else if (item.tipo === 'HIDRANTE') {
+                        if (item.esguicho === 'NC') ncEsguicho++;
+                        if (item.mangueira === 'NC') ncMangueira++;
+                        if (item.sinalizacao === 'NC') ncSinalizacao++;
+                    }
+                });
+            }
+
+            let html = `<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <p style="margin: 0; font-size: 14px; color: #166534;">Volume Inspecionado no Ciclo: <b>${arrayFiltrado.length} equipamentos vistoriados.</b></p>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; color: #166534;">Índice de Substituições / Trocas: <b>${itensTrocados} manutenções físicas realizadas.</b></p>
+                     </div>`;
+
+            if (alertasAmarelo > 0 || alertasVermelho > 0) {
+                html += `<div style="background-color: #fef2f2; border: 1px solid #fca5a5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 8px 0; color: #b91c1c; font-size: 14px; text-transform: uppercase;">⚠️ Alerta Preditivo de Vencimentos:</h4>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #7f1d1d;">`;
+                if (alertasVermelho > 0) html += `<li style="margin-bottom: 4px;"><b>${alertasVermelho} equipamento(s)</b> vencem em 15 dias ou já estão vencidos (Crítico).</li>`;
+                if (alertasAmarelo > 0) html += `<li><b>${alertasAmarelo} equipamento(s)</b> vencem em até 30 dias (Atenção).</li>`;
+                html += `   </ul>
+                         </div>`;
+            }
+
+            // TAREFA 55.4: Novos Alertas Coloridos de Desvios (Mapeando o Gráfico)
+            if (ncCondicao > 0 || ncEsguicho > 0) {
+                html += `<div style="background-color: #fee2e2; border: 1px solid #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 4px 0; color: #b91c1c; font-size: 13px; text-transform: uppercase;">❌ ALERTA DE CONDIÇÃO / AVARIAS:</h4>
+                    <p style="margin: 0; font-size: 12px; color: #7f1d1d;">Foram encontrados <b>${ncCondicao + ncEsguicho} equipamento(s)</b> com avarias físicas, falta de peças ou reprovados.</p>
+                </div>`;
+            }
+            if (ncManometro > 0 || ncMangueira > 0) {
+                html += `<div style="background-color: #ffedd5; border: 1px solid #fdba74; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 4px 0; color: #c2410c; font-size: 13px; text-transform: uppercase;">⚠️ ALERTA DE PRESSÃO / MANGUEIRA:</h4>
+                    <p style="margin: 0; font-size: 12px; color: #9a3412;">Foram encontrados <b>${ncManometro + ncMangueira} equipamento(s)</b> despressurizados ou com mangueiras danificadas.</p>
+                </div>`;
+            }
+            if (ncSinalizacao > 0) {
+                html += `<div style="background-color: #fff7ed; border: 1px solid #fed7aa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 4px 0; color: #ea580c; font-size: 13px; text-transform: uppercase;">🔸 ALERTA DE SINALIZAÇÃO / ACESSO:</h4>
+                    <p style="margin: 0; font-size: 12px; color: #c2410c;">Foram encontrados <b>${ncSinalizacao} equipamento(s)</b> com sinalização ausente, obstruída ou incorreta.</p>
+                </div>`;
+            }
+
+            const itensSubstituidos = arrayFiltrado.filter(i => i.dataTroca);
+            if (itensSubstituidos.length > 0) {
+                html += `<div style="background-color: #fdf4ff; border: 1px solid #d8b4fe; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 8px 0; color: #7e22ce; font-size: 14px; text-transform: uppercase;">🔄 Equipamentos Substituídos (${itensSubstituidos.length}):</h4>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #6b21a8; line-height: 1.6;">`;
+                itensSubstituidos.forEach(sub => {
+                    const motivoText = sub.motivoTroca ? `(Motivo: <b>${sub.motivoTroca}</b>)` : `(Motivo não informado)`;
+                    html += `<li style="margin-bottom: 4px;"><b>[ ${sub.id} ]</b> - Setor: ${sub.localizacao || 'N/A'} <br><span style="font-size: 11px; color: #9333ea;">${motivoText}</span></li>`;
+                });
+                html += `   </ul>
+                         </div>`;
+            }
+            
+            return html;
+        }
+
+        // ==========================================
+        // TAREFA 55.4B: CORPO DE VISTORIAS AGRUPADO (SEM GRÁFICOS)
+        // ==========================================
+        function montarCorpoVistorias(arrayFiltrado, itensTrocados) {
+            let html = `<div style="padding: 20px; background-color: #ffffff;">`;
+            
+            if (typeof montarSecaoAlertasVistorias === 'function') {
+                html += montarSecaoAlertasVistorias(arrayFiltrado, itensTrocados);
+            }
+
+            html += `<h3 style="color: #0070C0; border-bottom: 2px solid #bae6fd; padding-bottom: 5px; margin-top: 30px;">🧯 INVENTÁRIO FOTOGRÁFICO DO PERÍODO</h3>`;
+
+            if (arrayFiltrado.length === 0) {
+                html += `<p style="font-size:14px; color:#64748b; text-align:center; padding: 20px;">Nenhum equipamento foi inspecionado neste recorte de tempo.</p>`;
+            } else {
+                let agrupadoPorFilial = {};
+                arrayFiltrado.forEach(item => {
+                    const f = item.filial || 'SEM FILIAL';
+                    if (!agrupadoPorFilial[f]) agrupadoPorFilial[f] = [];
+                    agrupadoPorFilial[f].push(item);
+                });
+
+                Object.keys(agrupadoPorFilial).forEach(filial => {
+                    const itensFilial = agrupadoPorFilial[filial];
+                    const nomeFilial = filial.replace('_', ' ');
+
+                    html += `<div style="background-color: #0ea5e9; color: white; padding: 10px 15px; border-radius: 6px; margin: 25px 0 15px 0; font-weight: bold; font-size: 14px; text-transform: uppercase;">📍 UNIDADE: ${nomeFilial} (${itensFilial.length} Vistoriados)</div>`;
+
+                    html += `<table width="100%" cellpadding="8" cellspacing="0" border="0" style="table-layout: fixed;">`;
+                    for (let i = 0; i < itensFilial.length; i += 2) {
+                        html += `<tr>`;
+                        html += `<td width="50%" valign="top" style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;">`;
+                        if (typeof gerarCartaoEmailExtintor === 'function') html += gerarCartaoEmailExtintor(itensFilial[i]);
+                        else html += `<div style="text-align:center; font-size:11px; color:#94a3b8;">Motor Inativo</div>`;
+                        html += `</td>`;
+
+                        if (i + 1 < itensFilial.length) {
+                            html += `<td width="50%" valign="top" style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;">`;
+                            if (typeof gerarCartaoEmailExtintor === 'function') html += gerarCartaoEmailExtintor(itensFilial[i+1]);
+                            else html += `<div style="text-align:center; font-size:11px; color:#94a3b8;">Motor Inativo</div>`;
+                            html += `</td>`;
+                        } else {
+                            html += `<td width="50%" style="border: none;"></td>`;
+                        }
+                        html += `</tr><tr><td colspan="2" height="10"></td></tr>`;
+                    }
+                    html += `</table>`;
+                });
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // ==========================================
+        // TAREFA 55.2: ORQUESTRADOR COM FILTRAGEM DE UNIDADES
+        // ==========================================
+        function gerarEmailExtintores(filtro) {
+            mostrarToast("Montando relatório executivo... Aguarde.");
+            if(typeof atualizarDashboard === 'function') atualizarDashboard();
+
+            const hoje = new Date();
+            const dataStr = `${("0"+hoje.getDate()).slice(-2)}/${("0"+(hoje.getMonth()+1)).slice(-2)}/${hoje.getFullYear()}`;
+            const inspetor = document.getElementById('login-email') ? document.getElementById('login-email').value.split('@')[0].toUpperCase() : 'INSPETOR SESMT'; // Correção silenciosa mantida
+
+            const todosDados = Object.values(dadosColetados);
+            const resultFiltro = filtrarDadosExportacao(filtro, todosDados);
+
+            const imgStatus = typeof chartStatusInstancia !== 'undefined' && chartStatusInstancia ? chartStatusInstancia.toBase64Image() : '';
+            const imgTipos = typeof chartTiposInstancia !== 'undefined' && chartTiposInstancia ? chartTiposInstancia.toBase64Image() : '';
+            const imgMensalExt = typeof chartMensalExtInstancia !== 'undefined' && chartMensalExtInstancia ? chartMensalExtInstancia.toBase64Image() : '';
+
+            // TAREFA 55.2: Descobre exatamente quais filiais estão no relatório gerado
+            let stringUnidades = "Nenhuma unidade validada";
+            if (resultFiltro.arrayFiltrado.length > 0) {
+                const filiaisUnicas = [...new Set(resultFiltro.arrayFiltrado.map(i => (i.filial || 'Sem Filial').replace('_', ' ')))];
+                stringUnidades = filiaisUnicas.join(', ');
+            } else if (filtro === 'SAUDE') {
+                stringUnidades = "Todas as Filiais Ativas";
+            }
+
+            let html = `<div style="max-width: 800px; margin: 0 auto; font-family: Arial, sans-serif; color: #333;">`;
+            html += montarCabecalhoEmail(resultFiltro.tituloEmail, resultFiltro.subtituloEmail, dataStr, inspetor, stringUnidades);
+
+            if (filtro === 'SAUDE') {
+                html += montarCorpoSaude(imgStatus, imgTipos);
+            } else {
+                html += montarCorpoVistorias(resultFiltro.arrayFiltrado, resultFiltro.itensTrocados, imgStatus, imgMensalExt);
+            }
+
+            html += `<p style="text-align: center; font-size: 10px; color: #94a3b8; margin-top: 20px; text-transform: uppercase; letter-spacing: 1px;">Documento gerado e autenticado pelo App SGI Industrial</p>`;
+            html += `</div>`;
+
+            const divContainer = document.getElementById('container-previa-email');
+            const divConteudo = document.getElementById('conteudo-email-outlook');
+            
+            if (divConteudo && divContainer) {
+                divConteudo.innerHTML = html;
+                divContainer.classList.remove('hidden');
+                divContainer.classList.add('flex');
+            }
+            mostrarToast("✅ Relatório gerado! Verifique a prévia abaixo.");
+        }
+
+        // ==========================================
+        // TAREFA 45.1: MOTOR FOTOGRÁFICO DO CARTÃO (E-MAIL)
+        // ==========================================
+        // O que faz: Isola a lógica de extração da imagem e constrói a tabela HTML rígida em volta dela.
+        // Por que fiz: O Outlook bloqueia CSS flexbox/grid. O uso de table protege o layout e permite exibir links da nuvem perfeitamente.
+        function gerarGaleriaCartaoExtintor(item) {
+            const fotoExibicao = item.fotoUrl || item.fotoBase64 || "";
+            if (!fotoExibicao) {
+                return `<p style="font-size: 11px; color: #94a3b8; margin: 5px 0;">Sem evidência fotográfica anexada.</p>`;
+            }
+            
+            const isLink = fotoExibicao.startsWith('http');
+            return `
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 10px;">
+                <tr>
+                    <td width="150" valign="top" style="padding-right: 8px; padding-bottom: 8px;">
+                        ${isLink ? 
+                        `<a href="${fotoExibicao}" target="_blank" style="text-decoration: none;">
+                            <img src="${fotoExibicao}" width="140" height="140" style="width: 140px; height: 140px; border-radius: 4px; border: 1px solid #cbd5e1; object-fit: cover; display: block;">
+                        </a>` 
+                        : 
+                        `<div style="width: 140px; height: 140px; border-radius: 4px; border: 1px dashed #94a3b8; background-color: #f1f5f9; color: #64748b; font-size: 11px; text-align: center; padding-top: 35px; box-sizing: border-box; font-family: Arial, sans-serif;">
+                            <span style="font-size: 20px; display: block; margin-bottom: 5px;">☁️</span>
+                            <b>Foto Local</b><br>Sincronize o app.
+                        </div>`
+                        }
+                    </td>
+                </tr>
+            </table>`;
+        }
+
+        // ==========================================
+        // TAREFA 45.2: A CARCAÇA DO CARTÃO (E-MAIL OUTLOOK)
+        // ==========================================
+        // O que faz: Constrói o layout tabular blindado para o Outlook de cada equipamento, exibindo seus dados, status e anexando a miniatura fotográfica.
+        // Por que fiz: O Outlook remove CSS moderno. Tabelas "raiz" garantem que a borda lateral de status (Verde/Vermelha) e os textos não se quebrem ao colar na mensagem.
+        function gerarCartaoEmailExtintor(item) {
+            let isNC = false;
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            
+            // 1. Recalcula Regras de Negócio (OK vs NC)
+            if (item.tipo === 'EXTINTOR') {
+                let isExpired = false;
+                if (item.manutencao && item.manutencao.includes('/')) {
+                    const p = item.manutencao.split('/');
+                    if (p.length === 3 && new Date(p[2], p[1] - 1, p[0]) < hoje) isExpired = true; // Correção silenciosa mantida
+                }
+                if (isExpired || item.condicao === 'NC' || item.manometro === 'NC' || item.sinalizacao === 'NC') isNC = true;
+            } else if (item.tipo === 'HIDRANTE') {
+                if (item.esguicho === 'NC' || item.mangueira === 'NC' || item.sinalizacao === 'NC') isNC = true;
+            } else {
+                if (item.condicao === 'NC') isNC = true;
+            }
+
+            // 2. Definição Visual das Badges
+            const corBordaHex = isNC ? '#ef4444' : '#22c55e'; // Vermelho (NC) ou Verde (OK)
+            const tagNC = isNC ? `<span style="font-size:10px; background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">⚠️ NC (Desvio)</span>` : `<span style="font-size:10px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:5px;">✔️ OK (Conforme)</span>`;
+            const tagTroca = item.dataTroca ? `<span style="font-size:10px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px; font-weight:bold; border: 1px solid #86efac; margin-right:5px;">🔄 TROCADO: ${item.dataTroca}</span>` : '';
+            const setorTratado = item.localizacao && item.localizacao.trim() !== '' ? item.localizacao : 'SEM SETOR';
+
+            // TAREFA 51.1: ETIQUETA PREDITIVA COM CORES HTML RÍGIDAS
+            let tagVencimento = '';
+            let dataAlvo = "";
+            if (item.tipo === 'EXTINTOR' && item.manutencao) dataAlvo = item.manutencao;
+            else if (item.tipo === 'HIDRANTE' && item.teste_mangueira) dataAlvo = item.teste_mangueira;
+
+            if (dataAlvo !== "" && typeof calcularStatusVencimento === 'function') {
+                const s = calcularStatusVencimento(dataAlvo);
+                if (s.faixa !== 'SEM_DATA') {
+                    let bgC = '#eff6ff', txtC = '#2563eb', brdC = '#bfdbfe'; // Azul
+                    if(s.faixa === 'VERDE') { bgC = '#dcfce7'; txtC = '#15803d'; brdC = '#86efac'; }
+                    if(s.faixa === 'AMARELO') { bgC = '#fef9c3'; txtC = '#b45309'; brdC = '#fde047'; }
+                    if(s.faixa === 'VERMELHO') { bgC = '#fee2e2'; txtC = '#b91c1c'; brdC = '#fca5a5'; }
+                    tagVencimento = `<span style="font-size:10px; background:${bgC}; color:${txtC}; padding:2px 6px; border-radius:4px; font-weight:bold; border: 1px solid ${brdC};">⏱️ ${s.texto}</span>`;
+                }
+            }
+
+            // 3. Montagem da Tabela HTML
+            let html = `
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 15px; font-family: Arial, sans-serif;">
+                <tr>
+                    <td width="6" style="background-color: ${corBordaHex}; font-size: 1px; line-height: 1px; border-radius: 6px 0 0 6px;">&nbsp;</td>
+                    <td style="background-color: #f8fafc; padding: 12px; border: 1px solid #e2e8f0; border-left: none; border-radius: 0 6px 6px 0;">
+                        <div style="margin-bottom: 8px;">
+                            <span style="font-size:14px; font-weight:bold; color:#0f172a; text-transform:uppercase;">[ ${item.id} ] - ${item.tipo}</span>
+                            <span style="font-size:11px; color:#0070C0; font-weight:bold; margin-left:5px;">📍 ${setorTratado}</span>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            ${tagNC} ${tagTroca} ${tagVencimento}
+                        </div>`;
+
+            if (item.observacao_geral && item.observacao_geral.trim() !== '') {
+                html += `<p style="margin: 6px 0 0 0; font-size: 12px; color: #475569; background-color: #ffffff; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;"><b><span style="color:#0070C0;">Anotação:</span></b> ${item.observacao_geral}</p>`;
+            }
+
+            // Acopla a Fotografia gerada na Tarefa 45.1
+            if (typeof gerarGaleriaCartaoExtintor === 'function') {
+                html += gerarGaleriaCartaoExtintor(item);
+            }
+
+            html += `
+                    </td>
+                </tr>
+            </table>`;
+            
+            return html;
+        }
+
+        // ==========================================
+        // TAREFA 46.1: A MÁGICA DA COLA (PRINT FANTASMA PARA OUTLOOK)
+        // ==========================================
+        // O que faz: Converte o HTML gerado em um elemento invisível, processa imagens WebP/URL em miniaturas JPEG Base64 via Canvas e copia o formato Rich Text (RTF) para a área de transferência.
+        // Por que fiz: O Outlook bloqueia imagens externas por segurança (anti-tracking). Ao assar os pixels localmente e colar em RTF, as fotos não são bloqueadas e a formatação de tabelas se mantém perfeita.
+        async function copiarParaAreaTransferenciaRichText(htmlString) {
+            mostrarToast("Preparando imagens para o Outlook... Aguarde.");
+            
+            // 1. Cria o Palco Invisível
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = htmlString;
+            tempDiv.style.position = "absolute";
+            tempDiv.style.left = "-9999px";
+            tempDiv.style.top = "0";
+            document.body.appendChild(tempDiv);
+
+            // 2. Encontra as Fotos e Assa os Pixels na Memória (Canvas)
+            const imagens = tempDiv.querySelectorAll('img');
+            const promessasImagem = Array.from(imagens).map(img => {
+                return new Promise(resolve => {
+                    const isLink = img.src.startsWith('http') || img.src.startsWith('data:');
+                    if (!isLink) { resolve(); return; }
+
+                    const imgTemp = new Image();
+                    imgTemp.crossOrigin = "Anonymous"; // Permissão para ler a nuvem
+                    imgTemp.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 140;
+                            canvas.height = 140;
+                            const ctx = canvas.getContext('2d');
+                            
+                            // Fundo branco forçado para evitar que WebP transparente vire tela preta no JPEG
+                            ctx.fillStyle = "#FFFFFF";
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                            // Centraliza, redimensiona e corta (Object-fit Cover)
+                            const scale = Math.max(canvas.width / imgTemp.width, canvas.height / imgTemp.height);
+                            const x = (canvas.width / 2) - (imgTemp.width / 2) * scale;
+                            const y = (canvas.height / 2) - (imgTemp.height / 2) * scale;
+                            ctx.drawImage(imgTemp, x, y, imgTemp.width * scale, imgTemp.height * scale);
+
+                            // Transforma em JPEG rígido injetado no src (O Print Fantasma)
+                            img.src = canvas.toDataURL('image/jpeg', 0.8);
+                        } catch(e) {
+                            console.warn("Restrição de CORS no Canvas. Tentando colar link puro.", e);
+                        }
+                        resolve();
+                    };
+                    imgTemp.onerror = resolve; 
+                    imgTemp.src = img.src;
+                });
+            });
+
+            // 3. Aguarda o processo fotográfico terminar e seleciona tudo
+            await Promise.all(promessasImagem);
+            await new Promise(r => setTimeout(r, 200)); // Respiro de renderização
+
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(tempDiv);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // 4. Sequestra o comando "Ctrl+C" do usuário
+            try {
+                document.execCommand("copy");
+                mostrarToast("✅ E-mail Copiado! Cole no Outlook (Ctrl+V).");
+            } catch (e) {
+                console.error("Erro na Área de Transferência:", e);
+                mostrarToast("⚠️ Erro ao copiar formato HTML.");
+            }
+
+            // 5. Destrói o Palco Invisível e limpa a memória
+            selection.removeAllRanges();
+            document.body.removeChild(tempDiv);
         }
 
         function exportarJSON(metodo) {
